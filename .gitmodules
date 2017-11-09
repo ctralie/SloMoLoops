@@ -1,3 +1,6 @@
 [submodule "SlidingWindowVideoTDA"]
 	path = SlidingWindowVideoTDA
 	url = https://github.com/ctralie/SlidingWindowVideoTDA.git
+[submodule "ripser"]
+	path = ripser
+	url = https://github.com/ctralie/ripser.git
