@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 import scipy.interpolate as interp
 from VideoReordering import *
+from Laplacian import *
+from CSMSSMTools import *
 from sklearn.decomposition import PCA
 from ripser import ripser
 
@@ -28,91 +30,43 @@ def getSlidingWindow(x, dim, Tau, dT):
         xidx.append(xidx[-1])
     return (X, xidx)
 
-def getInterpolatedSignal(x, fac):
-    N = len(x)
-    idx = np.arange(N)
-    idxx = np.linspace(0, N, fac*N+1)
-    return interp.spline(idx, x, idxx)
-
-def getReorderedConsensus(X, N, theta):
-    M = X.shape[0]
-    d = X.shape[1]
-    tu = np.unwrap(theta)
-    if tu[-1] - tu[0] < 0:
-        tu = -tu
-    tu = tu - np.min(tu)
-    NPeriods = int(np.round(np.max(tu)/(2*np.pi)*N/M))
-    T = N/NPeriods #Period
-    print "NPeriods = ", NPeriods
-    print "N/NPeriods = ", float(N)/NPeriods
-    tu = N*np.mod(tu, 2*np.pi)/(2*np.pi)
-    idx = np.argsort(tu)
-    X2 = X[idx, :]
-    t1 = tu[idx]
-    Z = np.nan*np.ones((M, N))
-    for i in range(M):
-        ts = t1[i] + NPeriods*np.arange(d)
-        imin = int(np.ceil(np.min(ts)))
-        imax = int(np.floor(np.max(ts)))
-        t2 = np.arange(imin, imax+1)
-        x = interp.spline(ts, X2[i, :], t2)
-        Z[i, np.mod(t2, N)] = x
-    plt.imshow(Z, aspect = 'auto', interpolation = 'none', cmap = 'afmhot')
-    plt.xlabel("Time")
-    plt.ylabel("Spline Interpolated Windows")
-    plt.show()
-    z = np.nanmedian(Z, 0)
-    return z
-
 if __name__ == '__main__':
     np.random.seed(100)
+    useGroundTruth = False #Whether to use ground truth circular coordinates in the reordering
     Weighted = False #Whether to use the weighted graph laplacian
     NPeriods = 20
-    SamplesPerPeriod = 9
+    SamplesPerPeriod = 12
     N = NPeriods*SamplesPerPeriod
-    t = np.linspace(0, 2*np.pi*NPeriods, N)#N+5)[0:N]
+    t = np.linspace(0, 2*np.pi*NPeriods, N)
     t2 = np.linspace(0, 2*np.pi, N)
-    x = np.cos(t) + np.cos(3*t) + np.cos(4*t)
-    x = x + 0.5*np.random.randn(len(x))
-    x2 = np.cos(t2) + np.cos(3*t2) + np.cos(4*t2)
+    x = np.cos(t) + np.cos(3*t) + np.cos(5*t)
+    x = x + 0.6*np.random.randn(len(x))
+    x2 = np.cos(t2) + np.cos(3*t2) + np.cos(5*t2)
 
-    dim = 20
-    Tau = 1
-    dT = 1
-    (X, xidx) = getSlidingWindow(x, dim, Tau, dT)
-    #X = X - np.mean(X, 1)[:, None]
-    #X = X/np.sqrt(np.sum(X**2, 1))[:, None]
-    extent = Tau*dim
+    dim = 10 #Sliding window length
+    (X, xidx) = getSlidingWindow(x, dim, 1, 1)
     
     #Use rips filtration to guide Laplacian
     D = getSSM(X)
     Is = ripser.doRipsFiltrationDM(D, 1, coeff=41)
     I = Is[1]
     thresh = np.argmax(I[:, 1] - I[:, 0])
-    thresh = I[thresh, 0]
+    thresh = np.mean(I[thresh, :])
     if Weighted:
-        A = np.exp(-D**2/(2*thresh**2))
+        res = getLapCircularCoordinatesSigma(D, thresh)
     else:
-        A = np.zeros(D.shape)
-        A[D <= thresh] = 1
-        np.fill_diagonal(A, 0)
-    (w, v) = getLaplacianEigsDense(A, 3)
-    
-    #Compute reordering based on Laplacian
-
-    
-    v = v[:, [1, 2]]
-    theta = np.arctan2(v[:, 1], v[:, 0])
+        res = getLapCircularCoordinatesThresh(D, thresh)
+    [w, v, theta, A] = [res['w'], res['v'], res['theta'], res['A']]
     
     ##Ground truth
-    #theta = np.mod(t[0:len(theta)], 2*np.pi)
-    ##
+    if useGroundTruth:
+        theta = np.mod(t[0:len(theta)], 2*np.pi)
     
     ridx = np.argsort(theta)
     xresort = x[ridx]
 
     #Do denoising
-    y = getReorderedConsensus(X, len(x), theta)
+    y = getReorderedConsensus1D(X, len(x), theta, doPlot = True)
 
     #Make color array
     c = plt.get_cmap('Spectral')
@@ -126,7 +80,7 @@ if __name__ == '__main__':
 
 
     fig = plt.figure(figsize=(18, 12))
-    ylims = [-2, 3.5]
+    ylims = [-3, 3.5]
     plt.subplot(241)
     drawLineColored(t, x, C[xidx, :])
     ax = plt.gca()
@@ -139,11 +93,11 @@ if __name__ == '__main__':
     #ax2 = fig.add_subplot(132, projection = '3d')
     plt.subplot(242)
     plt.title("Sliding Window Adjacency Matrix\nWin = %i, thresh = %g"%(dim, thresh))
-    plt.imshow(1-A, cmap='gray')
+    plt.imshow(A, cmap='gray')
 
 
     plt.subplot(243)
-    plt.scatter(v[:, 0], v[:, 1], 20, c=C, edgecolor = 'none')
+    plt.scatter(v[:, 1], v[:, 2], 20, c=C, edgecolor = 'none')
     plt.xlabel("Laplacian Eigenvector 1")
     plt.ylabel("Laplacian Eigenvector 2")
     plt.title("Laplacian Eigenmap")
