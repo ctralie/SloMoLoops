@@ -43,7 +43,7 @@ if __name__ == '__main__':
     x = x + 0.6*np.random.randn(len(x))
     x2 = np.cos(t2) + np.cos(3*t2) + np.cos(5*t2)
 
-    dim = 10 #Sliding window length
+    dim = 40 #Sliding window length
     (X, xidx) = getSlidingWindow(x, dim, 1, 1)
     
     #Use rips filtration to guide Laplacian

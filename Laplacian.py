@@ -51,12 +51,27 @@ def getSlopes(thetas, sWin = 10):
     return slopes
 
 def getLapCircularCoordinatesSigma(D, sigma):
+    """
+    Get circular coordinates using a weighted laplacian 
+    :param pD: Distance matrix
+    :param sigma: Standard deviation for exponential kernel
+    :return {'w':eigenvalues, 'v':eigenvectors, 'theta':Circular coordinates,\
+            'thetau':Unwrapped circular coordinates, 'A':Adjacency matrix}
+    """
     A = np.exp(-D*D/(2*sigma**2))
     (w, v, L) = getLaplacianEigsDense(A, 3)
     (theta, thetau) = getLapThetas(v, 1, 2)
     return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A}
 
 def getLapCircularCoordinatesThresh(pD, thresh, doPlot = False):
+    """
+    Get circular coordinates using an unweighted laplacian based
+    on binarizing a distance matrix below a certain threshold
+    :param pD: Distance matrix
+    :param thresh: Threshold below which to include edges
+    :return {'w':eigenvalues, 'v':eigenvectors, 'theta':Circular coordinates,\
+            'thetau':Unwrapped circular coordinates, 'A':Adjacency matrix}
+    """
     D = np.array(pD)
     np.fill_diagonal(D, np.inf)
     A = np.zeros(D.shape)
@@ -118,5 +133,5 @@ if __name__ == '__main__':
     c += np.cos(3*t)
     #c += t
     
-    sinusoidalScore(c, True)
+    sinusoidalScore(c, True, True)
     plt.show()
