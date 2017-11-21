@@ -5,7 +5,8 @@
 
 You can checkout the code
 ~~~~~ bash
-git clone https://github.com/ctralie/GeometricCoverSongs.git
+git clone https://github.com/ctralie/SloMoLoops.git
+cd SloMoLoops
 git submodule update --init
 git submodule update --remote
 ~~~~~
