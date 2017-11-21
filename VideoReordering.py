@@ -73,18 +73,24 @@ def getReorderedConsensusVideo(XOrig, d, theta, doPlot = False):
     the window to vote on the final pixels in the reordered video.
     Use linear interpolation to fill in intermediate values in 
     each window.
-    :param X: An Mxd array of windows
-    :param N: The original signal length
+    :param XOrig: An NxNPixels array of video frames
+    :param d: The sliding window length
     :param theta: The circular coordinates
     :param doPlot: Whether to make a plot showing all of the windows
     """
     #TODO: For speed, do linear interpolation on PCA coordinates, but
     #perform median on the final pixels
+    N = XOrig.shape[0]
+    M = N-d+1
+    assert(M == len(theta))
+    
+    ICov = XOrid.dot(I.T)
+    [lam, V] = linalg.eigh(ICov)
+    lam[lam < 0] = 0
+    V = V*np.sqrt(lam[None, :])
 
     #Step 1: Figure out the number of periods that the signal
     #goes through
-    M = len(theta)
-    N = XOrig.shape[0]
     tu = np.unwrap(theta)
     if tu[-1] - tu[0] < 0:
         tu = -tu
@@ -95,6 +101,7 @@ def getReorderedConsensusVideo(XOrig, d, theta, doPlot = False):
     t1 = tu[idx]
     
     #Step 2: Go through each window and use it to vote on final samples
+    #in projected coordinates
     XRet = 0*XOrig 
     counts = np.zeros(XRet.shape[0])
     for i in range(M):
