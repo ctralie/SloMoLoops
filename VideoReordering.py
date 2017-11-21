@@ -4,6 +4,7 @@ from CSMSSMTools import *
 from Laplacian import *
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimage
 import scipy.sparse as sparse
 
 def getReorderedConsensus1D(X, N, theta, doPlot = False):
@@ -64,31 +65,29 @@ def getReorderedConsensus1D(X, N, theta, doPlot = False):
         plt.show()
     return np.nanmedian(Z, 0)
 
-def getReorderedConsensusVideo(XOrig, d, theta, doPlot = False):
-    #TODO: Finish this
+def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Verbose = False):
     """
     Given an array of sliding window videos and circular coordinates,
     reorder the sliding windows to go through one period
     over the length of the signal, and use the different lags in
     the window to vote on the final pixels in the reordered video.
     Use linear interpolation to fill in intermediate values in 
-    each window.
-    :param XOrig: An NxNPixels array of video frames
-    :param d: The sliding window length
+    each window.  For speed, do linear interpolation on PCA coordinates
+    but perform median on the final pixels
+    :param X: An NFrames x NFrames array of mean-subtracted PCA frames \
+        (singular value U*S)
+    :param IDims: Dimensions of video frames
+    :param Mu: A 1 x (NPixels*NChannels) array of the average of all frames
+    :param VT: The right singular vectors transposed, to get from PCA\
+        back to video.  Dimensions NFrames x (NPixels*NChannels)
+    :param dim: The sliding window length
     :param theta: The circular coordinates
     :param doPlot: Whether to make a plot showing all of the windows
+    :param Verbose: Whether to print out debugging info
     """
-    #TODO: For speed, do linear interpolation on PCA coordinates, but
-    #perform median on the final pixels
-    N = XOrig.shape[0]
-    M = N-d+1
-    assert(M == len(theta))
-    
-    ICov = XOrid.dot(I.T)
-    [lam, V] = linalg.eigh(ICov)
-    lam[lam < 0] = 0
-    V = V*np.sqrt(lam[None, :])
-
+    N = X.shape[0]
+    M = len(theta)
+   
     #Step 1: Figure out the number of periods that the signal
     #goes through
     tu = np.unwrap(theta)
@@ -102,49 +101,68 @@ def getReorderedConsensusVideo(XOrig, d, theta, doPlot = False):
     
     #Step 2: Go through each window and use it to vote on final samples
     #in projected coordinates
-    XRet = 0*XOrig 
-    counts = np.zeros(XRet.shape[0])
+    XInterp = np.nan*np.ones((M, X.shape[0], X.shape[1]))
+    pix = np.arange(X.shape[1])
     for i in range(M):
+        if Verbose:
+            print("Interpolating window %i of %i"%(i+1, M))
         #Figure out the range of the window in the final signal
-        ts = t1[i] + NPeriods*np.arange(d)
+        ts = t1[i] + NPeriods*np.arange(dim)
         imin = int(np.ceil(np.min(ts)))
         imax = int(np.floor(np.max(ts)))
-        t2 = np.arange(imin, imax+1)
+        t2 = np.arange(imin, imax+1, int(NPeriods/2))
         #Interpolate the window to fill in missing samples
+        f = scipy.interpolate.interp2d(pix, ts, X[i:i+dim, :], kind='linear')
+        WinNew = f(pix, t2)
         
         #Place into array, considering that there may be
         #collisions after modding.  In the case of collisions, take
         #the mean of the values that overlap
         idx = np.mod(t2, N)
-        x = sparse.coo_matrix((x, (np.zeros(len(t2)), idx)), shape=(1, N))
-        x = (x.toarray()).flatten()
-        counts = sparse.coo_matrix((np.ones(len(t2)), (np.zeros(len(t2)), idx)), shape=(1, N))
-        counts = (counts.toarray()).flatten()
-        counts[counts == 0] = np.nan
-        x = x/counts
-        Z[i, :] = x
-    if doPlot:
-        plt.imshow(Z, aspect = 'auto', interpolation = 'none', cmap = 'afmhot')
-        plt.xlabel("Time")
-        plt.ylabel("Spline Interpolated Windows")
-        plt.show()
-    return np.nanmedian(Z, 0)
+        XInterp[i, idx, :] = WinNew
+    
+    #Step 3: Project the consensus of each frame back, and do a median voting
+    XRet = np.zeros(VT.shape)
+    for i in range(X.shape[0]):
+        if Verbose:
+            print("Interpolating window %i of %i"%(i+1, M))
+        F = XInterp[:, i, :]
+        F = F.dot(VT) + Mu
+        saveVideo(F, IDims, "%i.avi"%i)
+        F = np.nanmedian(F, 0)
+        XRet[i, :] = F.flatten()
+        mpimage.imsave("%s%i.png"%(TEMP_STR, i+1), np.reshape(XRet[i, :], IDims))
+    return XRet
+    
 
-def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, doPlot = True):
+def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, doPlot = True, Verbose = False):
     """
     Reorder the video based on circular coordinates of a sliding
     window embedding
     :param XOrig: An NFrames x (NPixels*NChannels) video array
     :param dim: Dimension to use in the sliding window
-    :param derivWin: Window of derivative to use
+    :param derivWin: Window of derivative to use to help sliding window\
+        embedding drift (NOTE: NOT used in final consensus)
     :param Weighted: Whether to use weighted Laplacian
     :param doSimple: If true, do a  simple reordering of the first \
         frames in each window.  Otherwise, do a consensus reordering
     :param doPlot: Whether to plot the circular coordinates
+    :param Verbose: Whether to print timing information
     """
-    X = getPCAVideo(XOrig)
-    print X.shape
-    print("Finished PCA")
+    tic = time.time()
+    if Verbose:
+        print("Doing PCA on video...")
+    Mu = np.mean(XOrig, 0)[None, :]
+    I = XOrig - Mu
+    tic = time.time()
+    ICov = I.dot(I.T)
+    [lam, U] = linalg.eigh(ICov)
+    lam[lam < 0] = 0
+    VT = U.T.dot(I)/np.sqrt(lam[:, None])
+    X = U*np.sqrt(lam[None, :])
+    XProc = np.array(X)
+    if Verbose:
+        print("Elapsed Time: %g"%(time.time() - tic))
     if derivWin > 0:
         [X, validIdx] = getTimeDerivative(X, derivWin)
     XS = getSlidingWindowVideo(X, dim, 1, 1)
@@ -186,10 +204,10 @@ def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, 
         idx = np.argsort(theta)
         return XOrig[idx, :]
     else:
-        return getReorderedConsensusVideo()
+        return getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot, Verbose)
 
 if __name__ == '__main__':
-    filename = "jumpingjacks2men.ogg"
+    filename = "jumpingjacks2menlowres.ogg"
     (I, IDims) = loadImageIOVideo(filename)
-    XNew = reorderVideo(I, 30, doSimple = True)
+    XNew = reorderVideo(I, 30, doSimple = False, doPlot = False, Verbose = True)
     saveVideo(XNew, IDims, "reordered.avi")
