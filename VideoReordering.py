@@ -110,25 +110,24 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Ver
         ts = t1[i] + NPeriods*np.arange(dim)
         imin = int(np.ceil(np.min(ts)))
         imax = int(np.floor(np.max(ts)))
-        t2 = np.arange(imin, imax+1, int(NPeriods/2))
+        t2 = np.arange(imin, imax+1)
         #Interpolate the window to fill in missing samples
-        f = scipy.interpolate.interp2d(pix, ts, X[i:i+dim, :], kind='linear')
+        f = scipy.interpolate.interp2d(pix, ts, X[idx[i]:idx[i]+dim, :], kind='linear')
         WinNew = f(pix, t2)
+        #saveVideo(WinNew.dot(VT) + Mu, IDims, "%i.avi"%i)
         
         #Place into array, considering that there may be
         #collisions after modding.  In the case of collisions, take
         #the mean of the values that overlap
-        idx = np.mod(t2, N)
-        XInterp[i, idx, :] = WinNew
+        XInterp[i, np.mod(t2, N), :] = WinNew
     
     #Step 3: Project the consensus of each frame back, and do a median voting
     XRet = np.zeros(VT.shape)
     for i in range(X.shape[0]):
         if Verbose:
-            print("Interpolating window %i of %i"%(i+1, M))
+            print("Interpolating window %i of %i"%(i+1, N))
         F = XInterp[:, i, :]
         F = F.dot(VT) + Mu
-        saveVideo(F, IDims, "%i.avi"%i)
         F = np.nanmedian(F, 0)
         XRet[i, :] = F.flatten()
         mpimage.imsave("%s%i.png"%(TEMP_STR, i+1), np.reshape(XRet[i, :], IDims))
@@ -165,7 +164,7 @@ def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, 
         print("Elapsed Time: %g"%(time.time() - tic))
     if derivWin > 0:
         [X, validIdx] = getTimeDerivative(X, derivWin)
-    XS = getSlidingWindowVideo(X, dim, 1, 1)
+    XS = getSlidingWindowVideoInteger(X, dim)
 
     #Mean-center and normalize sliding window
     Y = XS - np.mean(XS, 1)[:, None]
@@ -207,7 +206,10 @@ def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, 
         return getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot, Verbose)
 
 if __name__ == '__main__':
+    from SyntheticVideos import getCircleRotatingVideo
     filename = "jumpingjacks2menlowres.ogg"
     (I, IDims) = loadImageIOVideo(filename)
+    #(I, IDims) = getCircleRotatingVideo()
+    #saveVideo(I, IDims, "circle.avi")
     XNew = reorderVideo(I, 30, doSimple = False, doPlot = False, Verbose = True)
     saveVideo(XNew, IDims, "reordered.avi")
