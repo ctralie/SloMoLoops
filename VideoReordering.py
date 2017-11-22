@@ -116,9 +116,7 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Ver
         WinNew = f(pix, t2)
         #saveVideo(WinNew.dot(VT) + Mu, IDims, "%i.avi"%i)
         
-        #Place into array, considering that there may be
-        #collisions after modding.  In the case of collisions, take
-        #the mean of the values that overlap
+        #TODO: Deal with collisions
         XInterp[i, np.mod(t2, N), :] = WinNew
     
     #Step 3: Project the consensus of each frame back, and do a median voting
@@ -127,8 +125,10 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Ver
         if Verbose:
             print("Interpolating window %i of %i"%(i+1, N))
         F = XInterp[:, i, :]
+        F = F[np.sum(np.isnan(F), 1) == 0, :]
         F = F.dot(VT) + Mu
-        F = np.nanmedian(F, 0)
+        #saveVideo(F, IDims, "%i.avi"%i)
+        F = np.median(F, 0)
         XRet[i, :] = F.flatten()
         mpimage.imsave("%s%i.png"%(TEMP_STR, i+1), np.reshape(XRet[i, :], IDims))
     return XRet
@@ -211,5 +211,5 @@ if __name__ == '__main__':
     (I, IDims) = loadImageIOVideo(filename)
     #(I, IDims) = getCircleRotatingVideo()
     #saveVideo(I, IDims, "circle.avi")
-    XNew = reorderVideo(I, 30, doSimple = False, doPlot = False, Verbose = True)
+    XNew = reorderVideo(I, 10, doSimple = False, doPlot = True, Verbose = True)
     saveVideo(XNew, IDims, "reordered.avi")
