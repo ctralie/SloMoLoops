@@ -159,7 +159,8 @@ def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, 
     tic = time.time()
     ICov = I.dot(I.T)
     [lam, U] = linalg.eigh(ICov)
-    lam[lam < 0] = 0
+    lam = lam[1::] #Smallest eigenvalue is always zero
+    U = U[:, 1::]
     VT = U.T.dot(I)/np.sqrt(lam[:, None])
     X = U*np.sqrt(lam[None, :])
     XProc = np.array(X)
