@@ -65,7 +65,7 @@ def getReorderedConsensus1D(X, N, theta, doPlot = False):
         plt.show()
     return np.nanmedian(Z, 0)
 
-def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Verbose = False):
+def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Verbose = False, lookatVotes = False):
     """
     Given an array of sliding window videos and circular coordinates,
     reorder the sliding windows to go through one period
@@ -84,6 +84,8 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Ver
     :param theta: The circular coordinates
     :param doPlot: Whether to make a plot showing all of the windows
     :param Verbose: Whether to print out debugging info
+    :param lookAtVotes: Whether to output a video for all of the votes\
+        for each frame
     """
     N = X.shape[0]
     M = len(theta)
@@ -127,7 +129,8 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Ver
         F = XInterp[:, i, :]
         F = F[np.sum(np.isnan(F), 1) == 0, :]
         F = F.dot(VT) + Mu
-        #saveVideo(F, IDims, "%i.avi"%i)
+        if lookAtVotes:
+            saveVideo(F, IDims, "%i.avi"%i)
         F = np.median(F, 0)
         XRet[i, :] = F.flatten()
         mpimage.imsave("%s%i.png"%(TEMP_STR, i+1), np.reshape(XRet[i, :], IDims))
@@ -203,7 +206,7 @@ def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, 
         idx = np.argsort(theta)
         return XOrig[idx, :]
     else:
-        return getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot, Verbose)
+        return getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot, Verbose, True)
 
 if __name__ == '__main__':
     from SyntheticVideos import getCircleRotatingVideo
