@@ -65,7 +65,7 @@ def getReorderedConsensus1D(X, N, theta, doPlot = False):
         plt.show()
     return np.nanmedian(Z, 0)
 
-def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Verbose = False, lookatVotes = False):
+def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Verbose = False, lookAtVotes = False):
     """
     Given an array of sliding window videos and circular coordinates,
     reorder the sliding windows to go through one period
@@ -206,7 +206,7 @@ def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, 
         idx = np.argsort(theta)
         return XOrig[idx, :]
     else:
-        return getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot, Verbose, True)
+        return getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot, Verbose, lookAtVotes = True)
 
 if __name__ == '__main__':
     from SyntheticVideos import getCircleRotatingVideo
