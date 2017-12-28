@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 import scipy.misc
 from skimage.transform import pyramid_gaussian
+import pyflann
 
 def rgb2gray(rgb):
     r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
@@ -114,35 +115,23 @@ def getColorPatchesImageSet(As, KSpatial, patchfn):
             AllP = np.concatenate((AllP, P[None, :, :, :]), 0)
     return AllP
 
-def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], bruteForce = False, patchfn = getColorPatchesImageSet):
+def getPatchDictionaries(As, Aps, NLevels = 3, KSpatials = [5, 5], patchfn = getColorPatchesImageSet):
     """
     :param As: An array of images of the same dimension
     :param Aps: An array of images of the same dimension as As, parallel to As
-    :param B: The example image
     """
-    import pyflann
-    #patchfn = getGrayscalePatchesImageSet
-    patchfn = getColorPatchesImageSet
     #Make image pyramids
     ALs = []
     ApLs = []
     for i in range(len(As)):
         ALs.append(tuple(pyramid_gaussian(As[i], NLevels, downscale = 2)))
         ApLs.append(tuple(pyramid_gaussian(Aps[i], NLevels, downscale = 2)))
-    BL = tuple(pyramid_gaussian(B, NLevels, downscale = 2))
-    BpL = []
-    BpLidx = []
-    print("BL:")
-    for i in range(len(BL)):
-        print(BL[i].shape)
-        BpL.append(np.zeros(BL[i].shape))
-        BpLidx.append(-1*np.ones((BL[i].shape[0], BL[i].shape[1], 3)))
-    print("AL:")
-    for i in range(len(ALs[0])):
-        print(ALs[0][i].shape)
-
-    #Do multiresolution synthesis
+    #Make ANN lists
+    annLists = {}
+    Xs = {}
+    annidx2idxs = {}
     for level in range(NLevels, -1, -1):
+        print("Level %i"%level)
         KSpatial = KSpatials[-1]
         if level == 0:
             KSpatial = KSpatials[0]
@@ -150,9 +139,7 @@ def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], b
         APatches = patchfn([ALs[i][level] for i in range(len(ALs))], KSpatial, getPatches)
         ApPatches = patchfn([ApLs[i][level] for i in range(len(ApLs))], KSpatial, getCausalPatches)
         X = np.concatenate((APatches, ApPatches), 3)
-        print("X.shape = ", X.shape)
-        B2 = None
-        Bp2 = None
+        print("X.shape = {}".format(X.shape))
         if level < NLevels:
             #Use multiresolution features
             As2 = [scipy.misc.imresize(ALs[i][level+1], ALs[i][level].shape) for i in range(len(ALs))]
@@ -160,13 +147,42 @@ def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], b
             A2Patches = patchfn(As2, KSpatial, getPatches)
             Ap2Patches = patchfn(Aps2, KSpatial, getPatches)
             X = np.concatenate((X, A2Patches, Ap2Patches), 3)
+        annList = pyflann.FLANN()
+        annList.build_index(np.reshape(X, [X.shape[0]*X.shape[1]*X.shape[2], X.shape[3]]))
+        annLists[level] = annList
+        Xs[level] = X
+    return {'annLists':annLists, 'ALs':ALs, 'ApLs':ApLs, 'Xs':Xs}
+
+def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], patchfn = getColorPatchesImageSet):
+    """
+    :param As: An array of images of the same dimension
+    :param Aps: An array of images of the same dimension as As, parallel to As
+    :param B: The example image
+    """
+    print("Getting patch dictionaries...")
+    res = getPatchDictionaries(As, Aps, NLevels = NLevels, KSpatials = KSpatials, patchfn = patchfn)
+    [ALs, ApLs, Xs, annLists] = [res['ALs'], res['ApLs'], res['Xs'], res['annLists']]
+
+    print("Doing image analogies...")
+    BL = tuple(pyramid_gaussian(B, NLevels, downscale = 2))
+    BpL = []
+    BpLidx = []
+    for i in range(len(BL)):
+        BpL.append(np.zeros(BL[i].shape))
+        BpLidx.append(-1*np.ones((BL[i].shape[0], BL[i].shape[1], 3)))
+
+    #Do multiresolution synthesis
+    for level in range(NLevels, -1, -1):
+        KSpatial = KSpatials[-1]
+        if level == 0:
+            KSpatial = KSpatials[0]
+        #Step 1: Make features
+        B2 = None
+        Bp2 = None
+        if level < NLevels:
+            #Use multiresolution features
             B2 = scipy.misc.imresize(BL[level+1], BL[level].shape)
             Bp2 = scipy.misc.imresize(BpL[level+1], BpL[level].shape)
-        if bruteForce:
-            XSqr = np.sum(X**2, 3).flatten()
-        else:
-            annList = pyflann.FLANN()
-            annList.build_index(np.reshape(X, [X.shape[0]*X.shape[1]*X.shape[2], X.shape[3]]))
 
         #Step 2: Fill in the first few scanLines to prevent the image
         #from getting crap in the beginning
@@ -197,11 +213,8 @@ def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], b
                     BpPatch = patchfn([Bp2[i-d:i+d+1, j-d:j+d+1, :]], KSpatial, getPatches)
                     F = np.concatenate((F, BPatch.flatten(), BpPatch.flatten()))
                 #Find index of most closely matching feature point in A
-                if bruteForce:
-                    DistSqrFn = XSqr + np.sum(F**2) - 2*(X.dot(F)).flatten()
-                    idx = np.argmin(DistSqrFn)
-                else:
-                    idx = annList.nn_index(F)[0].flatten()
+                idx = annLists[level].nn_index(F)[0].flatten()
+                X = Xs[level]
                 idx = np.unravel_index(idx, (X.shape[0], X.shape[1], X.shape[2]))
                 if Kappa > 0:
                 #Compare with coherent pixel
@@ -226,20 +239,14 @@ def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], b
         plt.savefig("%i_idx.png"%level, bbox_inches = 'tight')
     return BpL[0]
 
-def testCyclops():
-    A = readImage("images/me-mask.png")
-    Ap = readImage("images/me.jpg")
-    B = readImage("images/cyclopsmask.png")
-    res = doImageAnalogies(A, Ap, B, Kappa = 0.1, NLevels = 1)
-
-def testSuperRes(fac, Kappa, NLevels, fileprefix, bruteForce = False):
+def testSuperRes(fac, Kappa, NLevels, fileprefix):
     from SlidingWindowVideoTDA.VideoTools import loadImageIOVideo
     import skimage.transform
     (I, IDims) = loadImageIOVideo("jumpingjacks2men.ogg")
     IDims2 = (int(IDims[0]*fac), int(IDims[1]*fac))
     As = []
     Aps = []
-    for i in range(100, 120, 3):
+    for i in range(100, 120, 4):
         Ap = np.reshape(I[i, :], IDims)
         A = skimage.transform.resize(Ap, IDims2)
         A = skimage.transform.resize(A, IDims)
@@ -254,8 +261,8 @@ def testSuperRes(fac, Kappa, NLevels, fileprefix, bruteForce = False):
     writeImage(Ap, "%sAp.png"%fileprefix)
     writeImage(B, "%sB.png"%fileprefix)
     writeImage(BpGT, "%sBpGT.png"%fileprefix)
-    Bp = doImageAnalogies(As, Aps, B, Kappa = Kappa, NLevels = NLevels, bruteForce = bruteForce)
+    Bp = doImageAnalogies(As, Aps, B, Kappa = Kappa, NLevels = NLevels)
     writeImage(Bp, "%sBP.png"%fileprefix)
 
 if __name__ == '__main__':
-    testSuperRes(fac = 0.25, Kappa = 0.5, NLevels = 2, fileprefix = "", bruteForce = False)
+    testSuperRes(fac = 0.25, Kappa = 0, NLevels = 2, fileprefix = "")
