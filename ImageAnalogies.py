@@ -51,7 +51,8 @@ def getCausalPatches(I, dim):
 
 def getCoherenceMatch(X, x0, BpLidx, dim, i, j):
     """
-    :param X: An MxNxDimFeatures array of feature vectors at each pixel
+    :param X: An NImagesxMxNxDimFeatures array of feature vectors at each pixel\
+                in each image
     :param x0: The feature vector of the pixel that's being filled in
     :param BpLidx: An MxN array of raveled indices from which pixels have
         been drawn so far
@@ -70,7 +71,8 @@ def getCoherenceMatch(X, x0, BpLidx, dim, i, j):
     #TODO: Vectorize code below
     for n in range(dI.size):
         #Indices of pixel picked for neighbor
-        ni = BpLidx[dI[n]+i, dJ[n]+j][0]
+        imidx = int(BpLidx[dI[n]+i, dJ[n]+j][0])
+        ni = BpLidx[dI[n]+i, dJ[n]+j][1]
         nj = BpLidx[dI[n]+i, dJ[n]+j][1]
         if ni == -1 or nj == -1:
             continue
@@ -78,19 +80,55 @@ def getCoherenceMatch(X, x0, BpLidx, dim, i, j):
         nj = int(nj - dJ[n])
         if ni < 0 or nj < 0 or ni >= M or nj >= N:
             continue
-        x = X[ni, nj, :]
+        x = X[imidx, ni, nj, :]
         distSqr = np.sum((x - x0)**2)
         if distSqr < minDistSqr:
             minDistSqr = distSqr
-            idxmin = [ni, nj]
+            idxmin = [imidx, ni, nj]
     return (idxmin, minDistSqr)
 
+def getGrayscalePatchesImageSet(As, KSpatial, patchfn):
+    if len(As) == 0:
+        return None
+    AllP = patchfn(rgb2gray(As[0]), KSpatial)[None, :, :, :]
+    for A in As[1::]:
+        P = patchfn(rgb2gray(A), KSpatial)[None, :, :, :]
+        AllP = np.concatenate((AllP, P), 0)
+    return AllP
 
-def doImageAnalogies(A, Ap, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5]):
+def getColorPatchesImageSet(As, KSpatial, patchfn):
+    if len(As) == 0:
+        return None
+    AllP = np.array([])
+    for A in As:
+        P = np.array([])
+        for k in range(3):
+            Pk = patchfn(A[:, :, k], KSpatial)
+            if P.size == 0:
+                P = Pk
+            else:
+                P = np.concatenate((P, Pk), 2)
+        if AllP.size == 0:
+            AllP = P[None, :, :, :]
+        else:
+            AllP = np.concatenate((AllP, P[None, :, :, :]), 0)
+    return AllP
+
+def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], bruteForce = False, patchfn = getColorPatchesImageSet):
+    """
+    :param As: An array of images of the same dimension
+    :param Aps: An array of images of the same dimension as As, parallel to As
+    :param B: The example image
+    """
     import pyflann
+    #patchfn = getGrayscalePatchesImageSet
+    patchfn = getColorPatchesImageSet
     #Make image pyramids
-    AL = tuple(pyramid_gaussian(A, NLevels, downscale = 2))
-    ApL = tuple(pyramid_gaussian(Ap, NLevels, downscale = 2))
+    ALs = []
+    ApLs = []
+    for i in range(len(As)):
+        ALs.append(tuple(pyramid_gaussian(As[i], NLevels, downscale = 2)))
+        ApLs.append(tuple(pyramid_gaussian(Aps[i], NLevels, downscale = 2)))
     BL = tuple(pyramid_gaussian(B, NLevels, downscale = 2))
     BpL = []
     BpLidx = []
@@ -98,10 +136,10 @@ def doImageAnalogies(A, Ap, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5]):
     for i in range(len(BL)):
         print(BL[i].shape)
         BpL.append(np.zeros(BL[i].shape))
-        BpLidx.append(-1*np.ones((BL[i].shape[0], BL[i].shape[1], 2)))
+        BpLidx.append(-1*np.ones((BL[i].shape[0], BL[i].shape[1], 3)))
     print("AL:")
-    for i in range(len(AL)):
-        print(AL[i].shape)
+    for i in range(len(ALs[0])):
+        print(ALs[0][i].shape)
 
     #Do multiresolution synthesis
     for level in range(NLevels, -1, -1):
@@ -109,28 +147,31 @@ def doImageAnalogies(A, Ap, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5]):
         if level == 0:
             KSpatial = KSpatials[0]
         #Step 1: Make features
-        APatches = getPatches(rgb2gray(AL[level]), KSpatial)
-        ApPatches = getCausalPatches(rgb2gray(ApL[level]), KSpatial)
-        X = np.concatenate((APatches, ApPatches), 2)
+        APatches = patchfn([ALs[i][level] for i in range(len(ALs))], KSpatial, getPatches)
+        ApPatches = patchfn([ApLs[i][level] for i in range(len(ApLs))], KSpatial, getCausalPatches)
+        X = np.concatenate((APatches, ApPatches), 3)
         print("X.shape = ", X.shape)
         B2 = None
         Bp2 = None
         if level < NLevels:
             #Use multiresolution features
-            A2 = scipy.misc.imresize(AL[level+1], AL[level].shape)
-            Ap2 = scipy.misc.imresize(ApL[level+1], ApL[level].shape)
-            A2Patches = getPatches(rgb2gray(A2), KSpatial)
-            Ap2Patches = getPatches(rgb2gray(Ap2), KSpatial)
-            X = np.concatenate((X, A2Patches, Ap2Patches), 2)
+            As2 = [scipy.misc.imresize(ALs[i][level+1], ALs[i][level].shape) for i in range(len(ALs))]
+            Aps2 = [scipy.misc.imresize(ApLs[i][level+1], ApLs[i][level].shape) for i in range(len(ApLs))]
+            A2Patches = patchfn(As2, KSpatial, getPatches)
+            Ap2Patches = patchfn(Aps2, KSpatial, getPatches)
+            X = np.concatenate((X, A2Patches, Ap2Patches), 3)
             B2 = scipy.misc.imresize(BL[level+1], BL[level].shape)
             Bp2 = scipy.misc.imresize(BpL[level+1], BpL[level].shape)
-        annList = pyflann.FLANN()
-        annList.build_index(np.reshape(X, [X.shape[0]*X.shape[1], X.shape[2]]))
+        if bruteForce:
+            XSqr = np.sum(X**2, 3).flatten()
+        else:
+            annList = pyflann.FLANN()
+            annList.build_index(np.reshape(X, [X.shape[0]*X.shape[1]*X.shape[2], X.shape[3]]))
 
         #Step 2: Fill in the first few scanLines to prevent the image
         #from getting crap in the beginning
         if level == NLevels:
-            I = np.array(ApL[level]*255, dtype = np.uint8)
+            I = np.array(ApLs[0][level]*255, dtype = np.uint8)
             I = scipy.misc.imresize(I, BpL[level].shape)
             BpL[level] = np.array(I/255.0, dtype = np.float64)
         else:
@@ -145,37 +186,42 @@ def doImageAnalogies(A, Ap, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5]):
             for j in range(d, BpL[level].shape[1]-d):
                 #Make the feature at this pixel
                 #Full patch B
-                BPatch = rgb2gray(BL[level][i-d:i+d+1, j-d:j+d+1, :])
+                BPatch = patchfn([BL[level][i-d:i+d+1, j-d:j+d+1, :]], KSpatial, getPatches)
                 #Causal patch B'
-                BpPatch = rgb2gray(BpL[level][i-d:i+d+1, j-d:j+d+1, :]).flatten()
-                BpPatch = BpPatch[0:int((KSpatial*KSpatial-1)/2)]
+                BpPatch = patchfn([BpL[level][i-d:i+d+1, j-d:j+d+1, :]], KSpatial, getCausalPatches)
                 F = np.concatenate((BPatch.flatten(), BpPatch.flatten()))
 
                 if level < NLevels:
                     #Use multiresolution features
-                    BPatch = rgb2gray(B2[i-d:i+d+1, j-d:j+d+1, :])
-                    BpPatch = rgb2gray(Bp2[i-d:i+d+1, j-d:j+d+1, :])
+                    BPatch = patchfn([B2[i-d:i+d+1, j-d:j+d+1, :]], KSpatial, getPatches)
+                    BpPatch = patchfn([Bp2[i-d:i+d+1, j-d:j+d+1, :]], KSpatial, getPatches)
                     F = np.concatenate((F, BPatch.flatten(), BpPatch.flatten()))
                 #Find index of most closely matching feature point in A
-                #DistSqrFn = XSqr + np.sum(F**2) - 2*X.dot(F)
-                idx = annList.nn_index(F)[0].flatten()
-                idx = np.unravel_index(idx, (X.shape[0], X.shape[1]))
+                if bruteForce:
+                    DistSqrFn = XSqr + np.sum(F**2) - 2*(X.dot(F)).flatten()
+                    idx = np.argmin(DistSqrFn)
+                else:
+                    idx = annList.nn_index(F)[0].flatten()
+                idx = np.unravel_index(idx, (X.shape[0], X.shape[1], X.shape[2]))
                 if Kappa > 0:
                 #Compare with coherent pixel
                     (idxc, distSqrc) = getCoherenceMatch(X, F, BpLidx[level], KSpatial, i, j)
-                    distSqr = np.sum((X[idx[0], idx[1]] - F)**2)
+                    distSqr = np.sum((X[idx[0], idx[1], idx[2], :] - F)**2)
                     fac = 1 + Kappa*(2.0**(level - NLevels))
                     if distSqrc < distSqr*fac*fac:
                         idx = idxc
                 BpLidx[level][i, j, :] = idx
-                BpL[level][i, j, :] = ApL[level][idx[0]+d, idx[1]+d, :]
+                BpL[level][i, j, :] = ApLs[idx[0]][level][idx[1]+d, idx[2]+d, :]
             if i%20 == 0:
                 writeImage(BpL[level], "%i.png"%level)
-        plt.subplot(122)
+        plt.subplot(131)
         plt.imshow(BpLidx[level][:, :, 0], cmap = 'Spectral')
-        plt.title("Y")
-        plt.subplot(121)
+        plt.title("idx")
+        plt.subplot(133)
         plt.imshow(BpLidx[level][:, :, 1], cmap = 'Spectral')
+        plt.title("Y")
+        plt.subplot(132)
+        plt.imshow(BpLidx[level][:, :, 2], cmap = 'Spectral')
         plt.title("X")
         plt.savefig("%i_idx.png"%level, bbox_inches = 'tight')
     return BpL[0]
@@ -186,14 +232,20 @@ def testCyclops():
     B = readImage("images/cyclopsmask.png")
     res = doImageAnalogies(A, Ap, B, Kappa = 0.1, NLevels = 1)
 
-def testSuperRes(fac, Kappa, NLevels, fileprefix):
+def testSuperRes(fac, Kappa, NLevels, fileprefix, bruteForce = False):
     from SlidingWindowVideoTDA.VideoTools import loadImageIOVideo
     import skimage.transform
     (I, IDims) = loadImageIOVideo("jumpingjacks2men.ogg")
-    Ap = np.reshape(I[0, :], IDims)
     IDims2 = (int(IDims[0]*fac), int(IDims[1]*fac))
-    A = skimage.transform.resize(Ap, IDims2)
-    A = skimage.transform.resize(A, IDims)
+    As = []
+    Aps = []
+    for i in range(100, 120, 3):
+        Ap = np.reshape(I[i, :], IDims)
+        A = skimage.transform.resize(Ap, IDims2)
+        A = skimage.transform.resize(A, IDims)
+        As.append(A)
+        Aps.append(Ap)
+
     BpGT = np.reshape(I[10, :], IDims)
     B = skimage.transform.resize(BpGT, IDims2)
     B = skimage.transform.resize(B, IDims)
@@ -202,8 +254,8 @@ def testSuperRes(fac, Kappa, NLevels, fileprefix):
     writeImage(Ap, "%sAp.png"%fileprefix)
     writeImage(B, "%sB.png"%fileprefix)
     writeImage(BpGT, "%sBpGT.png"%fileprefix)
-    Bp = doImageAnalogies(A, Ap, B, Kappa = Kappa, NLevels = NLevels)
+    Bp = doImageAnalogies(As, Aps, B, Kappa = Kappa, NLevels = NLevels, bruteForce = bruteForce)
     writeImage(Bp, "%sBP.png"%fileprefix)
 
 if __name__ == '__main__':
-    testSuperRes(fac = 0.25, Kappa = 0.1, NLevels = 2, fileprefix = "")
+    testSuperRes(fac = 0.25, Kappa = 0.5, NLevels = 2, fileprefix = "", bruteForce = False)
