@@ -4,6 +4,8 @@ import scipy.io as sio
 import scipy.misc
 from skimage.transform import pyramid_gaussian
 import pyflann
+import time
+from GreedyPerm import *
 
 def rgb2gray(rgb):
     r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
@@ -115,7 +117,7 @@ def getColorPatchesImageSet(As, KSpatial, patchfn):
             AllP = np.concatenate((AllP, P[None, :, :, :]), 0)
     return AllP
 
-def getPatchDictionaries(As, Aps, NLevels = 3, KSpatials = [5, 5], patchfn = getColorPatchesImageSet):
+def getPatchDictionaries(As, Aps, NLevels = 3, KSpatials = [5, 5], patchfn = getColorPatchesImageSet, NSubsample = 100000):
     """
     :param As: An array of images of the same dimension
     :param Aps: An array of images of the same dimension as As, parallel to As
@@ -128,7 +130,7 @@ def getPatchDictionaries(As, Aps, NLevels = 3, KSpatials = [5, 5], patchfn = get
         ApLs.append(tuple(pyramid_gaussian(Aps[i], NLevels, downscale = 2)))
     #Make ANN lists
     annLists = {}
-    Xs = {}
+    XShapes = {}
     annidx2idxs = {}
     for level in range(NLevels, -1, -1):
         print("Level %i"%level)
@@ -139,7 +141,6 @@ def getPatchDictionaries(As, Aps, NLevels = 3, KSpatials = [5, 5], patchfn = get
         APatches = patchfn([ALs[i][level] for i in range(len(ALs))], KSpatial, getPatches)
         ApPatches = patchfn([ApLs[i][level] for i in range(len(ApLs))], KSpatial, getCausalPatches)
         X = np.concatenate((APatches, ApPatches), 3)
-        print("X.shape = {}".format(X.shape))
         if level < NLevels:
             #Use multiresolution features
             As2 = [scipy.misc.imresize(ALs[i][level+1], ALs[i][level].shape) for i in range(len(ALs))]
@@ -147,21 +148,31 @@ def getPatchDictionaries(As, Aps, NLevels = 3, KSpatials = [5, 5], patchfn = get
             A2Patches = patchfn(As2, KSpatial, getPatches)
             Ap2Patches = patchfn(Aps2, KSpatial, getPatches)
             X = np.concatenate((X, A2Patches, Ap2Patches), 3)
+        Y = np.reshape(X, [X.shape[0]*X.shape[1]*X.shape[2], X.shape[3]])
+        print("Y.shape = {}".format(Y.shape))
+        if NSubsample > -1:
+            #idx = np.random.permutation(Y.shape[0])[0:NSubsample]
+            idx = getBatchGreedyPerm(Y, NSubsample, 1000, True)
+            Y = Y[idx, :]
+        else:
+            idx = np.arange(Y.shape[0])
+        print("Y.shape after = {}".format(Y.shape))
         annList = pyflann.FLANN()
-        annList.build_index(np.reshape(X, [X.shape[0]*X.shape[1]*X.shape[2], X.shape[3]]))
+        annList.build_index(Y)
         annLists[level] = annList
-        Xs[level] = X
-    return {'annLists':annLists, 'ALs':ALs, 'ApLs':ApLs, 'Xs':Xs}
+        annidx2idxs[level] = idx
+        XShapes[level] = X.shape
+    return {'annLists':annLists, 'ALs':ALs, 'ApLs':ApLs, 'XShapes':XShapes, 'annidx2idxs':annidx2idxs}
 
-def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], patchfn = getColorPatchesImageSet):
+def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], patchfn = getColorPatchesImageSet, NSubsample = 100000):
     """
     :param As: An array of images of the same dimension
     :param Aps: An array of images of the same dimension as As, parallel to As
     :param B: The example image
     """
     print("Getting patch dictionaries...")
-    res = getPatchDictionaries(As, Aps, NLevels = NLevels, KSpatials = KSpatials, patchfn = patchfn)
-    [ALs, ApLs, Xs, annLists] = [res['ALs'], res['ApLs'], res['Xs'], res['annLists']]
+    res = getPatchDictionaries(As, Aps, NLevels = NLevels, KSpatials = KSpatials, patchfn = patchfn, NSubsample = NSubsample)
+    [ALs, ApLs, annLists, XShapes, annidx2idxs] = [res['ALs'], res['ApLs'], res['annLists'], res['XShapes'], res['annidx2idxs']]
 
     print("Doing image analogies...")
     BL = tuple(pyramid_gaussian(B, NLevels, downscale = 2))
@@ -214,8 +225,10 @@ def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], p
                     F = np.concatenate((F, BPatch.flatten(), BpPatch.flatten()))
                 #Find index of most closely matching feature point in A
                 idx = annLists[level].nn_index(F)[0].flatten()
-                X = Xs[level]
-                idx = np.unravel_index(idx, (X.shape[0], X.shape[1], X.shape[2]))
+                idx = np.array(idx, dtype = np.int64).flatten()
+                idx = annidx2idxs[level][idx]
+                XShape = XShapes[level]
+                idx = np.unravel_index(idx, (XShape[0], XShape[1], XShape[2]))
                 if Kappa > 0:
                 #Compare with coherent pixel
                     (idxc, distSqrc) = getCoherenceMatch(X, F, BpLidx[level], KSpatial, i, j)
@@ -240,7 +253,7 @@ def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], p
     return BpL[0]
 
 def testSuperRes(fac, Kappa, NLevels, fileprefix):
-    from SlidingWindowVideoTDA.VideoTools import loadImageIOVideo
+    from VideoTools import loadImageIOVideo
     import skimage.transform
     (I, IDims) = loadImageIOVideo("jumpingjacks2men.ogg")
     IDims2 = (int(IDims[0]*fac), int(IDims[1]*fac))
@@ -261,7 +274,7 @@ def testSuperRes(fac, Kappa, NLevels, fileprefix):
     writeImage(Ap, "%sAp.png"%fileprefix)
     writeImage(B, "%sB.png"%fileprefix)
     writeImage(BpGT, "%sBpGT.png"%fileprefix)
-    Bp = doImageAnalogies(As, Aps, B, Kappa = Kappa, NLevels = NLevels)
+    Bp = doImageAnalogies(As, Aps, B, Kappa = Kappa, NLevels = NLevels, NSubsample = 1e5)
     writeImage(Bp, "%sBP.png"%fileprefix)
 
 if __name__ == '__main__':

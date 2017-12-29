@@ -1,4 +1,4 @@
-from SlidingWindowVideoTDA.VideoTools import *
+from VideoTools import *
 from CSMSSMTools import *
 import numpy as np
 import matplotlib.pyplot as plt

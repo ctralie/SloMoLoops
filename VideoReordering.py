@@ -1,4 +1,4 @@
-from SlidingWindowVideoTDA.VideoTools import *
+from VideoTools import *
 from ripser import ripser
 from CSMSSMTools import *
 from Laplacian import *
@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimage
 import scipy.sparse as sparse
+import scipy.interpolate as interp
 
 def getReorderedConsensus1D(X, N, theta, doPlot = False):
     """
