@@ -6,6 +6,7 @@ from skimage.transform import pyramid_gaussian
 import pyflann
 import time
 from GreedyPerm import *
+from VideoTools import *
 
 def rgb2gray(rgb):
     r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
@@ -116,6 +117,10 @@ def getColorPatchesImageSet(As, KSpatial, patchfn):
         else:
             AllP = np.concatenate((AllP, P[None, :, :, :]), 0)
     return AllP
+
+def unwrapColorPatch(p, K):
+    p = np.reshape(p, [3, K, K])
+    return np.rollaxis(p, 0, 3)
 
 def getPatchDictionaries(As, Aps, NLevels = 3, KSpatials = [5, 5], patchfn = getColorPatchesImageSet, NSubsample = 100000):
     """
@@ -274,8 +279,30 @@ def testSuperRes(fac, Kappa, NLevels, fileprefix):
     writeImage(Ap, "%sAp.png"%fileprefix)
     writeImage(B, "%sB.png"%fileprefix)
     writeImage(BpGT, "%sBpGT.png"%fileprefix)
-    Bp = doImageAnalogies(As, Aps, B, Kappa = Kappa, NLevels = NLevels, NSubsample = 1e5)
+    Bp = doImageAnalogies(As, Aps, B, Kappa = Kappa, NLevels = NLevels, NSubsample = -1)
     writeImage(Bp, "%sBP.png"%fileprefix)
+
+def testDictionary():
+    import spams
+    K = 5
+    NFactors = 625
+    (I, IDims) = loadImageIOVideo("jumpingjacks2men.ogg")
+    F = np.reshape(I[0, :], IDims)
+    P = getColorPatchesImageSet([F], K, getPatches)
+    P = np.reshape(P, [P.shape[0]*P.shape[1]*P.shape[2], P.shape[3]])
+    print("Doing NNCS for %i factors on %i patches..."%(NFactors, P.shape[0]))
+    tic = time.time()
+    U = spams.nnsc(P.T, lambda1 = 0.1, return_lasso = False, K = NFactors)
+    print("Elapsed Time: %g"%(time.time() - tic))
+    k = int(np.sqrt(NFactors))
+    for i in range(k*k):
+        plt.subplot(k, k, i+1)
+        p = unwrapColorPatch(U[:, i], K)
+        p = p/np.max(p)
+        plt.imshow(p)
+        plt.axis('off')
+    plt.show()
 
 if __name__ == '__main__':
     testSuperRes(fac = 0.25, Kappa = 0, NLevels = 2, fileprefix = "")
+    #testDictionary()
