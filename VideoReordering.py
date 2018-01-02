@@ -122,8 +122,9 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Ver
         XInterp[i, np.mod(t2, N), :] = WinNew
     
     #Step 3: Project the consensus of each frame back, and do a median voting
+    print('VT shape:',VT.shape)
     XRet = np.zeros(VT.shape)
-    for i in range(X.shape[0]):
+    for i in range(VT.shape[0]):
         if Verbose:
             print("Interpolating window %i of %i"%(i+1, N))
         F = XInterp[:, i, :]
@@ -131,17 +132,21 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Ver
         F = F.dot(VT) + Mu
         if lookAtVotes:
             saveVideo(F, IDims, "%i.avi"%i)
-        F = np.median(F, 0)
+        #F = np.median(F, 0)
+        F = np.mean(F, 0)
         XRet[i, :] = F.flatten()
+        XRet[i,:] = np.minimum(XRet[i,:],1.0)
+        XRet[i,:] = np.maximum(XRet[i,:],0.0)
         mpimage.imsave("%s%i.png"%(TEMP_STR, i+1), np.reshape(XRet[i, :], IDims))
     return XRet
     
 
-def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, doPlot = True, Verbose = False):
+def reorderVideo(XOrig, X_feat, dim, derivWin = 10, Weighted = False, doSimple = False, doPlot = True, Verbose = False):
     """
     Reorder the video based on circular coordinates of a sliding
     window embedding
     :param XOrig: An NFrames x (NPixels*NChannels) video array
+    :param X_feat: An NFeatFrames x (NPixels*NChannels) video array
     :param dim: Dimension to use in the sliding window
     :param derivWin: Window of derivative to use to help sliding window\
         embedding drift (NOTE: NOT used in final consensus)
@@ -154,8 +159,8 @@ def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, 
     tic = time.time()
     if Verbose:
         print("Doing PCA on video...")
-    Mu = np.mean(XOrig, 0)[None, :]
-    I = XOrig - Mu
+    Mu = np.mean(X_feat, 0)[None, :]
+    I = X_feat - Mu
     tic = time.time()
     ICov = I.dot(I.T)
     [lam, U] = linalg.eigh(ICov)
@@ -163,7 +168,6 @@ def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, 
     U = U[:, 1::]
     VT = U.T.dot(I)/np.sqrt(lam[:, None])
     X = U*np.sqrt(lam[None, :])
-    XProc = np.array(X)
     if Verbose:
         print("Elapsed Time: %g"%(time.time() - tic))
     if derivWin > 0:
@@ -174,7 +178,7 @@ def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, 
     Y = XS - np.mean(XS, 1)[:, None]
     Y = Y/np.sqrt(np.sum(Y**2, 1))[:, None]
     D = getSSM(Y)
-    
+
     Is = ripser.doRipsFiltrationDM(D, 1, coeff=41)
     I = Is[1]
     thresh = np.argmax(I[:, 1] - I[:, 0])
@@ -184,7 +188,7 @@ def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, 
     else:
         res = getLapCircularCoordinatesThresh(D, thresh)
     [w, v, theta, A] = [res['w'], res['v'], res['theta'], res['A']]
-    
+
     if doPlot:
         plt.subplot(231)
         plt.imshow(D, cmap='afmhot', interpolation='none')
@@ -205,15 +209,32 @@ def reorderVideo(XOrig, dim, derivWin = 10, Weighted = False, doSimple = False, 
     
     if doSimple:
         idx = np.argsort(theta)
+        print('idx:',idx)
         return XOrig[idx, :]
     else:
-        return getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot, Verbose, lookAtVotes = True)
+        # done for the original video
+        Mu_orig = np.mean(XOrig, 0)[None, :]
+        I_orig = XOrig - Mu_orig
+        ICov_orig = I_orig.dot(I_orig.T)
+        [lam_orig, U_orig] = linalg.eigh(ICov_orig)
+        lam_orig = lam_orig[1::] #Smallest eigenvalue is always zero
+        U_orig = U_orig[:, 1::]
+        VT_orig = U_orig.T.dot(I_orig)/np.sqrt(lam_orig[:, None])
+        X_proj = U_orig*np.sqrt(lam_orig[None, :])
+        print('X proj shape:',X_proj.shape,'X shape:',X.shape)
+        return getReorderedConsensusVideo(X_proj, IDims, Mu_orig, VT_orig, dim, theta, doPlot, Verbose, lookAtVotes = False)
+        #return getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot, Verbose, lookAtVotes = False)
 
 if __name__ == '__main__':
     from SyntheticVideos import getCircleRotatingVideo
     filename = "jumpingjacks2menlowres.ogg"
-    (I, IDims) = loadImageIOVideo(filename)
+    pyr_level=2
+    doSimple = True
+    I, I_feat, IDims = loadImageIOVideo(filename,pyr_level=pyr_level)
+    print('I shape:',I.shape,'I feat shape:',I_feat.shape)
     #(I, IDims) = getCircleRotatingVideo()
     #saveVideo(I, IDims, "circle.avi")
-    XNew = reorderVideo(I, 10, doSimple = False, doPlot = True, Verbose = True)
-    saveVideo(XNew, IDims, "reordered.avi")
+    XNew = reorderVideo(I, I_feat, 10, derivWin = 10, doSimple = doSimple, doPlot = True, Verbose = True)
+    prefix = 'simple' if doSimple else 'mean'
+    saveVideo(XNew, IDims, prefix+"-reordered-"+str(pyr_level)+".avi")
+    #saveFrames(XNew, IDims)
