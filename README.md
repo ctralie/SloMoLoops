@@ -15,7 +15,7 @@ If this worked properly, you should see a subdirectory "ripser" and a subdirecto
 
 ~~~~~ bash
 cd ripser
-python setup.py build_ext --inplace
+python setup.py install
 ~~~~~
 
 
