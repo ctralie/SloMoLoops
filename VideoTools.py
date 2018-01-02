@@ -136,7 +136,7 @@ def loadImageIOVideo(path,pyr_level=0):
         return None
     import imageio
     if pyr_level > 0:
-        import cv2
+        from skimage.transform import pyramid_gaussian
 
     videoReader = imageio.get_reader(path, 'ffmpeg')
     NFrames = videoReader.get_length()
@@ -144,8 +144,8 @@ def loadImageIOVideo(path,pyr_level=0):
     for i in range(0, NFrames):
         frame = videoReader.get_data(i)
         feat_frame = np.array(frame)
-        for j in range(pyr_level):
-            feat_frame = cv2.pyrDown(feat_frame)
+        if pyr_level > 0:
+            feat_frame = tuple(pyramid_gaussian(frame, pyr_level, downscale = 2))[-1]
         if I is None:
             I = np.zeros((NFrames, frame.size))
             I_feat = np.zeros((NFrames, feat_frame.size))
