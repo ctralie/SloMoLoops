@@ -130,20 +130,29 @@ def loadCVVideo(path, show_video=False):
         cv2.destroyAllWindows()
     return (AllFrames, IDims)
 
-def loadImageIOVideo(path):
+def loadImageIOVideo(path,pyr_level=0):
     if not os.path.exists(path):
         print("ERROR: Video path not found: %s"%path)
         return None
     import imageio
+    if pyr_level > 0:
+        import cv2
+
     videoReader = imageio.get_reader(path, 'ffmpeg')
     NFrames = videoReader.get_length()
-    F0 = videoReader.get_data(0)
-    IDims = F0.shape
-    I = np.zeros((NFrames, F0.size))
-    I[0, :] = np.array(F0.flatten(), dtype = np.float32)/255.0
-    for i in range(1, NFrames):
-        I[i, :] = np.array(videoReader.get_data(i).flatten(), dtype = np.float32)/255.0
-    return (I, IDims)
+    I,I_feat = None,None
+    for i in range(0, NFrames):
+        frame = videoReader.get_data(i)
+        feat_frame = np.array(frame)
+        for j in range(pyr_level):
+            feat_frame = cv2.pyrDown(feat_frame)
+        if I is None:
+            I = np.zeros((NFrames, frame.size))
+            I_feat = np.zeros((NFrames, feat_frame.size))
+            IDims = frame.shape
+        I[i, :] = np.array(frame.flatten(), dtype = np.float32)/255.0
+        I_feat[i, :] = np.array(feat_frame.flatten(), dtype = np.float32)/255.0
+    return (I, I_feat, IDims)
 
 def loadVideoFolder(foldername):
     N = len(os.listdir(foldername))
@@ -157,6 +166,12 @@ def loadVideoFolder(foldername):
         f = scipy.misc.imread("%s/%i.png"%(foldername, i))
         I[i, :] = np.array(f.flatten(), dtype=np.float32)/255.0
     return (I, IDims)
+
+def saveFrames(I, IDims, frame_dir='frames/'):
+    for idx in range(I.shape[0]):
+        frame = np.reshape(I[idx,:],IDims)
+        rescaled_frame = (255.0*frame).astype(np.uint8)
+        Image.fromarray(rescaled_frame).save(frame_dir+'frame-'+str(idx)+'.jpg')
 
 #Output video
 #I: PxN video array, IDims: Dimensions of each frame
