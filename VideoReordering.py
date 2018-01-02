@@ -133,8 +133,8 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Ver
         F = F.dot(VT) + Mu
         if lookAtVotes:
             saveVideo(F, IDims, "%i.avi"%i)
-        #F = np.median(F, 0)
-        F = np.mean(F, 0)
+        F = np.median(F, 0)
+        #F = np.mean(F, 0)
         XRet[i, :] = F.flatten()
         XRet[i,:] = np.minimum(XRet[i,:],1.0)
         XRet[i,:] = np.maximum(XRet[i,:],0.0)
@@ -230,12 +230,12 @@ if __name__ == '__main__':
     from SyntheticVideos import getCircleRotatingVideo
     filename = "jumpingjacks2menlowres.ogg"
     pyr_level=2
-    doSimple = True
+    doSimple = False
     I, I_feat, IDims = loadImageIOVideo(filename,pyr_level=pyr_level)
     print('I shape:',I.shape,'I feat shape:',I_feat.shape)
     #(I, IDims) = getCircleRotatingVideo()
     #saveVideo(I, IDims, "circle.avi")
     XNew = reorderVideo(I, I_feat, 10, derivWin = 10, doSimple = doSimple, doPlot = True, Verbose = True)
-    prefix = 'simple' if doSimple else 'mean'
+    prefix = 'simple' if doSimple else 'median'
     saveVideo(XNew, IDims, prefix+"-reordered-"+str(pyr_level)+".avi")
     #saveFrames(XNew, IDims)
