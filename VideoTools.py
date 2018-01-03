@@ -12,6 +12,7 @@ import matplotlib.image as mpimage
 import scipy.misc
 import scipy.signal
 from scipy.ndimage import gaussian_gradient_magnitude
+from PIL import Image
 
 #Need these for saving 3D video
 

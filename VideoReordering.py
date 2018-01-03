@@ -165,8 +165,10 @@ def reorderVideo(XOrig, X_feat, dim, derivWin = 10, Weighted = False, doSimple =
     tic = time.time()
     ICov = I.dot(I.T)
     [lam, U] = linalg.eigh(ICov)
-    lam = lam[1::] #Smallest eigenvalue is always zero
-    U = U[:, 1::]
+    pos_lam_inds = lam > 1e-10
+    print('lam:',pos_lam_inds)
+    lam = lam[pos_lam_inds]
+    U = U[:, pos_lam_inds]
     VT = U.T.dot(I)/np.sqrt(lam[:, None])
     X = U*np.sqrt(lam[None, :])
     if Verbose:
@@ -218,8 +220,9 @@ def reorderVideo(XOrig, X_feat, dim, derivWin = 10, Weighted = False, doSimple =
         I_orig = XOrig - Mu_orig
         ICov_orig = I_orig.dot(I_orig.T)
         [lam_orig, U_orig] = linalg.eigh(ICov_orig)
-        lam_orig = lam_orig[1::] #Smallest eigenvalue is always zero
-        U_orig = U_orig[:, 1::]
+        pos_lam_orig_inds = lam_orig > 1e-10
+        lam_orig = lam_orig[pos_lam_orig_inds] #Smallest eigenvalue is always zero
+        U_orig = U_orig[:, pos_lam_orig_inds]
         VT_orig = U_orig.T.dot(I_orig)/np.sqrt(lam_orig[:, None])
         X_proj = U_orig*np.sqrt(lam_orig[None, :])
         print('X proj shape:',X_proj.shape,'X shape:',X.shape)
@@ -229,13 +232,14 @@ def reorderVideo(XOrig, X_feat, dim, derivWin = 10, Weighted = False, doSimple =
 if __name__ == '__main__':
     from SyntheticVideos import getCircleRotatingVideo
     filename = "jumpingjacks2menlowres.ogg"
-    pyr_level=2
-    doSimple = False
+    filename = "Videos/Fan4.avi"
+    pyr_level=0
+    doSimple = True
     I, I_feat, IDims = loadImageIOVideo(filename,pyr_level=pyr_level)
     print('I shape:',I.shape,'I feat shape:',I_feat.shape)
     #(I, IDims) = getCircleRotatingVideo()
     #saveVideo(I, IDims, "circle.avi")
     XNew = reorderVideo(I, I_feat, 10, derivWin = 10, doSimple = doSimple, doPlot = True, Verbose = True)
     prefix = 'simple' if doSimple else 'median'
-    saveVideo(XNew, IDims, prefix+"-reordered-"+str(pyr_level)+".avi")
-    #saveFrames(XNew, IDims)
+    #saveVideo(XNew, IDims, prefix+"-reordered-"+str(pyr_level)+".avi")
+    saveFrames(XNew, IDims)
