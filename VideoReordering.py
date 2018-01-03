@@ -241,5 +241,5 @@ if __name__ == '__main__':
     #saveVideo(I, IDims, "circle.avi")
     XNew = reorderVideo(I, I_feat, 10, derivWin = 10, doSimple = doSimple, doPlot = True, Verbose = True)
     prefix = 'simple' if doSimple else 'median'
-    #saveVideo(XNew, IDims, prefix+"-reordered-"+str(pyr_level)+".avi")
-    saveFrames(XNew, IDims)
+    saveVideo(XNew, IDims, prefix+"-reordered-"+str(pyr_level)+".avi")
+    #saveFrames(XNew, IDims)
