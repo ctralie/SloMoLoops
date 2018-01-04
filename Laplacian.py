@@ -50,17 +50,40 @@ def getSlopes(thetas, sWin = 10):
     slopes[-(sWin+1):] = slopes[-(sWin+1)]
     return slopes
 
-def getLapCircularCoordinatesSigma(D, sigma):
+def getLapCircularCoordinatesSigma(D, sigma, NEigs = 20, doPlot = False):
     """
     Get circular coordinates using a weighted laplacian 
     :param pD: Distance matrix
     :param sigma: Standard deviation for exponential kernel
+    :param NEigs: Maximum number of eigenvectors to compute
     :return {'w':eigenvalues, 'v':eigenvectors, 'theta':Circular coordinates,\
             'thetau':Unwrapped circular coordinates, 'A':Adjacency matrix}
     """
     A = np.exp(-D*D/(2*sigma**2))
-    (w, v, L) = getLaplacianEigsDense(A, 3)
-    (theta, thetau) = getLapThetas(v, 1, 2)
+    NEigs = min(NEigs, A.shape[0])
+    (w, v, L) = getLaplacianEigsDense(A, NEigs)
+    #Compute zero crossings and put the low frequencies eigenvectors first
+    s = v > 0
+    zcs = np.sum(s[1::, :] - s[0:-1, :], 0)
+    #Find the adjacent pair with the smallest number of zero crossings
+    smallest = np.inf
+    i1 = 1
+    for i in range(1, len(zcs)-1):
+        bothSum = zcs[i] + zcs[i+1]
+        if bothSum < smallest:
+            smallest = bothSum
+            i1 = i       
+    if doPlot:
+        plt.subplot(211)
+        plt.imshow(v, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
+        plt.xlim([0, v.shape[1]])
+        plt.title("Eigenvectors")
+        plt.subplot(212)
+        plt.plot(zcs)
+        plt.title("Zero Crossings, Smallest = (%i, %i)"%(i1, i1+1))
+        plt.xlim([0, v.shape[1]])
+        plt.show()
+    (theta, thetau) = getLapThetas(v, i1, i1+1)
     return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A}
 
 def getLapCircularCoordinatesThresh(pD, thresh, doPlot = False):
@@ -76,7 +99,7 @@ def getLapCircularCoordinatesThresh(pD, thresh, doPlot = False):
     np.fill_diagonal(D, np.inf)
     A = np.zeros(D.shape)
     A[D <= thresh] = 1
-    (w, v, L) = getLaplacianEigsDense(A, 3)
+    (w, v, L) = getLaplacianEigsDense(A, 10)
     (theta, thetau) = getLapThetas(v, 1, 2)
     if doPlot:
         plt.subplot(131)
@@ -99,30 +122,37 @@ def getLineLaplacian(NPoints):
     L = DEG - A
     return L
 
-def sinusoidalScore(x, medianFilter = True, doPlot = False):
+def sinusoidalScores(X, doPlot = False):
     """
     Return a score between [0, 1] that indicates how sinusoidal 
-    a signal is.  0 for not sinusoidal and 1 for sinusoidal
+    signals in the columns of X are.  0 for not sinusoidal and 1 for sinusoidal
     """
-    A = getLineLaplacian(len(x))
-    d = A.dot(x)
-    x1 = np.array(x)
-    if medianFilter:
-        x1 = median_filter(x1, 5)
+    A = getLineLaplacian(X.shape[0])
+    D = A.dot(X)
+    X1 = np.array(X)
     #Take care of boundary problems with the laplacian
-    x1[0] = x1[1]
-    x1[-1] = x1[-2]
-    d[0] = d[1]
-    d[-1] = d[-2]
-    x1 = x/np.sqrt(np.sum(x**2))
-    x2 = d/np.sqrt(np.sum(d**2))
+    X1[:, 0] = X1[:, 1]
+    X1[:, -1] = X1[:, -2]
+    D[:, 0] = D[:, 1]
+    D[:, -1] = D[:, -2]
+    X1 = X1/np.sqrt(np.sum(X1**2, 0))[None, :]
+    X2 = D/np.sqrt(np.sum(D**2, 0))[None, :]
     #Metric on projective plane
-    score = 1 - np.arccos(np.abs(np.sum(x1*x2)))/(np.pi/2)
-    if doPlot:
-        plt.plot(x1, 'r')
-        plt.plot(x2, 'b')
-        plt.title("Score = %g"%score)
-    return score
+    scores = 1 - np.arccos(np.abs(np.sum(X1*X2, 0)))/(np.pi/2)
+    return scores
+
+def frequencyScores(X):
+    """
+    Return a score between [0, 1] that indicates the frequency
+    of the sinusoids contained in the columns of X
+    """
+    A = getLineLaplacian(X.shape[0])
+    D = A.dot(X)
+    X1 = np.array(X)
+    #Take care of boundary problems with the laplacian
+    X1[:, [0, -1]] = 0
+    D[:, [0, -1]] = 0
+    return np.sum(X1*D, 0)
 
 if __name__ == '__main__':
     N = 200
