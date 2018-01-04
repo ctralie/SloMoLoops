@@ -84,7 +84,7 @@ def getLapCircularCoordinatesSigma(D, sigma, NEigs = 20, doPlot = False):
         plt.xlim([0, v.shape[1]])
         plt.show()
     (theta, thetau) = getLapThetas(v, i1, i1+1)
-    return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A}
+    return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
 
 def getLapCircularCoordinatesThresh(pD, thresh, doPlot = False):
     """
@@ -108,7 +108,7 @@ def getLapCircularCoordinatesThresh(pD, thresh, doPlot = False):
         plt.imshow(A, cmap = 'gray', interpolation = 'none')
         plt.subplot(133)
         plt.imshow(v, cmap = 'afmhot', aspect = 'auto', interpolation = 'none')
-    return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A}
+    return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[1, 2]}
 
 def getLineLaplacian(NPoints):
     I = np.arange(NPoints-1).tolist()

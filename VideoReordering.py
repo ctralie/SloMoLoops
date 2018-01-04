@@ -166,10 +166,10 @@ def reorderVideo(XOrig, X_feat, derivWin = 10, Weighted = False, doSimple = Fals
     tic = time.time()
     ICov = I.dot(I.T)
     [lam, U] = linalg.eigh(ICov)
-    lam[lam < 0] = 0
-    fac = np.zeros(lam.size)
-    fac[lam > 0] = 1/lam[lam > 0]
-    VT = (U.T.dot(I))*np.sqrt(fac[:, None])
+    pos_lam_inds = lam > 1e-10
+    lam = lam[pos_lam_inds]
+    U = U[:, pos_lam_inds]
+    VT = U.T.dot(I)/np.sqrt(lam[:, None])
     X = U*np.sqrt(lam[None, :])
     if Verbose:
         print("Elapsed Time: %g"%(time.time() - tic))
@@ -196,7 +196,7 @@ def reorderVideo(XOrig, X_feat, derivWin = 10, Weighted = False, doSimple = Fals
         res = getLapCircularCoordinatesSigma(D, thresh, doPlot = doPlot)
     else:
         res = getLapCircularCoordinatesThresh(D, thresh)
-    [w, v, theta, A] = [res['w'], res['v'], res['theta'], res['A']]
+    [w, v, theta, A, idxs] = [res['w'], res['v'], res['theta'], res['A'], res['idxs']]
 
     if doPlot:
         plt.subplot(231)
@@ -212,7 +212,7 @@ def reorderVideo(XOrig, X_feat, derivWin = 10, Weighted = False, doSimple = Fals
         plt.imshow(v, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
         plt.subplot(235)
         plt.scatter(v[:, 1], v[:, 2], 20, np.arange(v.shape[0]), cmap = 'spectral')
-        plt.title("Eigs 1 and 2")
+        plt.title("Eigs %i and %i"%(idxs[0], idxs[1]))
         plt.subplot(236)
         plt.plot(theta)
         plt.title("Circular Coordinates")
@@ -228,10 +228,10 @@ def reorderVideo(XOrig, X_feat, derivWin = 10, Weighted = False, doSimple = Fals
         I_orig = XOrig - Mu_orig
         ICov_orig = I_orig.dot(I_orig.T)
         [lam_orig, U_orig] = linalg.eigh(ICov_orig)
-        lam_orig[lam_orig < 0] = 0
-        fac_orig = np.zeros(lam_orig.size)
-        fac_orig[lam_orig > 0] = 1/lam_orig[lam_orig > 0]
-        VT_orig = U_orig.T.dot(I_orig)*np.sqrt(fac_orig[:, None])
+        pos_lam_orig_inds = lam_orig > 1e-10
+        lam_orig = lam_orig[pos_lam_orig_inds] #Smallest eigenvalue is always zero
+        U_orig = U_orig[:, pos_lam_orig_inds]
+        VT_orig = U_orig.T.dot(I_orig)/np.sqrt(lam_orig[:, None])
         X_proj = U_orig*np.sqrt(lam_orig[None, :])
         print('X proj shape:',X_proj.shape,'X shape:',X.shape)
         return getReorderedConsensusVideo(X_proj, IDims, Mu_orig, VT_orig, dim, theta, doPlot, Verbose, lookAtVotes = False)
