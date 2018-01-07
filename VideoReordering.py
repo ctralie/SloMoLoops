@@ -10,6 +10,25 @@ import scipy.sparse as sparse
 import scipy.interpolate as interp
 from sklearn import manifold
 
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--is-median-reorder', dest='median_reorder', action='store_true', help='enable median reordering')
+parser.add_argument('--is-simple-reorder', dest='median_reorder', action='store_false', help='enable simple reordering')
+parser.add_argument('--is-weighted-laplacian', dest='weighted_laplacian', action='store_true', help='enable weighted laplacian')
+parser.add_argument('--is-unweighted-laplacian', dest='weighted_laplacian', action='store_false', help='enable unweighted laplacian')
+parser.add_argument('--is-net-feat', dest='net_feat', action='store_true', help='enable resnet features')
+parser.add_argument('--is-pyr-feat', dest='net_feat', action='store_false', help='enable gaussian pyramid features')
+parser.add_argument('--pyr_level', type=int, default=0, help="pyramid level")
+parser.add_argument('--net_depth', type=int, default=0, help="at what layer do we extract features")
+parser.add_argument('--filename', default='jumpingjacks2menlowres.ogg', help="video filename")
+parser.set_defaults(median_reorder=False)
+parser.set_defaults(weighted_laplacian=False)
+parser.set_defaults(net_feat=False)
+
+opt = parser.parse_args()
+print(opt)
+
 def getReorderedConsensus1D(X, N, theta, doPlot = False):
     """
     Given an array of sliding windows and circular coordinates,
@@ -237,20 +256,19 @@ def reorderVideo(XOrig, X_feat, derivWin = 10, Weighted = False, doSimple = Fals
         return getReorderedConsensusVideo(X_proj, IDims, Mu_orig, VT_orig, dim, theta, doPlot, Verbose, lookAtVotes = False)
         #return getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot, Verbose, lookAtVotes = False)
 
+def get_out_filename(base_filename, do_simple, is_weighted, is_net_feat, pyr_level=0, layer=0):
+    filename = str(base_filename)
+    filename = filename+'-simple' if do_simple else filename+'-median'
+    filename = filename+'-weighted' if is_weighted else filename+'-unweighted'
+    filename = filename+'-net-'+str(layer) if is_net_feat else filename+'-img-'+str(pyr_level)
+    return filename+'.avi'
+
 if __name__ == '__main__':
     from SyntheticVideos import getCircleRotatingVideo
-    filename = "jumpingjacks2menlowres.ogg"
-    #filename = "Videos/Fan4_6FramesPerPeriod.avi"
-    pyr_level=2
-    doSimple = False
-    Weighted = True
-    I, I_feat, IDims = loadImageIOVideo(filename,pyr_level=pyr_level)
+    I, I_feat, IDims = loadVideoResNetFeats(opt.filename,opt.net_depth) if opt.net_feat else loadImageIOVideo(opt.filename,pyr_level=opt.pyr_level)
     print('I shape:',I.shape,'I feat shape:',I_feat.shape)
     #(I, IDims) = getCircleRotatingVideo()
     #saveVideo(I, IDims, "circle.avi")
-    XNew = reorderVideo(I, I_feat, derivWin = 2, Weighted = Weighted, doSimple = doSimple, doPlot = True, Verbose = True)
-    prefix = 'simple' if doSimple else 'median'
-    if Weighted:
-        prefix += "-weighted"
-    saveVideo(XNew, IDims, prefix+"-reordered-"+str(pyr_level)+".avi")
+    XNew = reorderVideo(I, I_feat, derivWin = 2, Weighted = opt.weighted_laplacian, doSimple = (not opt.median_reorder), doPlot = False, Verbose = True)
+    saveVideo(XNew, IDims, get_out_filename('reordered', (not opt.median_reorder), opt.weighted_laplacian, opt.net_feat, opt.pyr_level, opt.net_depth))
     #saveFrames(XNew, IDims)

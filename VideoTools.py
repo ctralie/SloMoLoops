@@ -11,6 +11,7 @@ import subprocess
 import matplotlib.image as mpimage
 import scipy.misc
 import scipy.signal
+import sys
 from scipy.ndimage import gaussian_gradient_magnitude
 from PIL import Image
 
@@ -153,6 +154,60 @@ def loadImageIOVideo(path,pyr_level=0):
             IDims = frame.shape
         I[i, :] = np.array(frame.flatten(), dtype = np.float32)/255.0
         I_feat[i, :] = np.array(feat_frame.flatten(), dtype = np.float32)/255.0
+    return (I, I_feat, IDims)
+
+def loadVideoResNetFeats(path, depth=0):
+    if not os.path.exists(path):
+        print("ERROR: Video path not found: %s"%path)
+        return None
+
+    import imageio
+    import torch
+    import torch.nn as nn
+    import torch.backends.cudnn as cudnn
+    import torchvision.transforms as transforms
+    import torchvision.models as models
+    from torch.autograd import Variable
+
+    # get first layers of network - we can try out different things here
+    if depth == 0:
+        shallow_layers = ['conv1','bn1','relu','maxpool']
+    elif depth == 1:
+        shallow_layers = ['conv1','bn1','relu','maxpool','layer1']
+    else:
+        print('unknown depth?',depth)
+        shallow_layers = ['conv1','bn1','relu','maxpool']
+    net = models.__dict__['resnet18'](pretrained=True)
+    resnet_module = net.modules().__next__()
+    resnet_modules = resnet_module.named_children()
+    shallow_nn = []
+    for module_name,module in resnet_modules:
+        if module_name in shallow_layers:
+            print('module ',module_name)
+            shallow_nn.append(module)
+
+    # preprocessing for network
+    full_transform = transforms.Compose([transforms.ToTensor(),transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+
+    videoReader = imageio.get_reader(path, 'ffmpeg')
+    NFrames = videoReader.get_length()
+    I,I_feat = None,None
+    for i in range(0, NFrames):
+        frame = videoReader.get_data(i)
+        frame_th = full_transform(Image.fromarray(frame)) # easiest to convert to PIL, then apply torch transforms
+        frame_mb = frame_th.view(1,frame_th.size()[0],frame_th.size()[1],frame_th.size()[2])
+        frame_var = Variable(frame_mb,requires_grad=False)
+        for module in shallow_nn:
+            frame_var = module(frame_var)
+        th_data = frame_var.data
+        single_th_data = th_data.view(th_data.size()[1],th_data.size()[2],th_data.size()[3])
+        feat_frame = single_th_data.numpy()
+        if I is None:
+            I = np.zeros((NFrames, frame.size))
+            I_feat = np.zeros((NFrames, feat_frame.size))
+            IDims = frame.shape
+        I[i, :] = np.array(frame.flatten(), dtype = np.float32)/255.0
+        I_feat[i, :] = np.array(feat_frame.flatten(), dtype = np.float32)
     return (I, I_feat, IDims)
 
 def loadVideoFolder(foldername):
