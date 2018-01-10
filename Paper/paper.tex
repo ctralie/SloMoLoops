@@ -1,3 +1,6 @@
+%%TODO: IF THIS GETS IN, CITE MY THESIS (since I present an early version
+%of this idea in my background and copied some text from there)
+
 % Template for ICIP-2018 paper; to be used with:
 %          spconf.sty  - ICASSP/ICIP LaTeX style file, and
 %          IEEEbib.bst - IEEE bibliography style file.
@@ -52,6 +55,19 @@ One, two, three, four, five
 \end{keywords}
 %
 
+
+\section{Introduction}
+
+\section{Background}
+
+Similar tricks with the graph Laplacian have been used to re-arrange images around a loop as a pre-processing step for structure from motion (\cite{averbuch2015ringit}) and to re-order the frames of microscope images a developing embryo (\cite{dsilva2015diffusionvecordering}).  A more topological approach with cohomology circular coordinates was used to parameterize a sliding window embedding of the Lorenz attractor (\cite{de2012topological}).
+
+
+
+\section{Method}
+As shown in , the sliding window embeddings of periodic signals form a topological loop.  This implies that, at the right scale, a mutual nearest neighbor graph (Definition~\ref{eq:csmbinarymutual}) built on the sliding window point cloud should be a circle graph, which means the first two nonzero eigenvectors should be a sine and cosine, or orthogonal linear combinations therein.  When plotted against each other, they make an approximate circle, and the arctangent of the two eigenvector coordinates at every window can be used to determine the {\em phase} of the corresponding window in the periodic signal.  The first sample of each window can then be re-sorted by phase.  Figure~\ref{fig:signaldelayresorted} shows an example of running this algorithm on a sampled signal $f(t) = \cos(t) + \cos(3t)$.  There are only 12 samples per period in the original signal, so the details of each period are rather coarse.  However, once they are re-sorted, we get a nice, fine-detailed representation of one period.  This can be used to fake temporal super-resolution or ``slow motion'' for signals.  Eventually, we hope to add some image processing tools to make aesthetically pleasing slow motion representations of periodic videos using this technique.
+
+Similar tricks with the graph Laplacian have been used to re-arrange images around a loop as a pre-processing step for structure from motion (\cite{averbuch2015ringit}) and to re-order the frames of microscope images a developing embryo (\cite{dsilva2015diffusionvecordering}).  A more topological approach with cohomology circular coordinates was used to parameterize a sliding window embedding of the Lorenz attractor (\cite{de2012topological}).
 
 % References should be produced using the bibtex program from suitable
 % BiBTeX files (here: strings, refs, manuals). The IEEEbib.bst bibliography
