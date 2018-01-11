@@ -5,6 +5,7 @@ import scipy.interpolate as interp
 from VideoReordering import *
 from Laplacian import *
 from CSMSSMTools import *
+from FundamentalFreq import *
 from sklearn.decomposition import PCA
 from ripser import ripser
 
@@ -30,20 +31,25 @@ def getSlidingWindow(x, dim, Tau, dT):
         xidx.append(xidx[-1])
     return (X, xidx)
 
-if __name__ == '__main__':
+def ReorderingExample1D():
     np.random.seed(100)
     useGroundTruth = False #Whether to use ground truth circular coordinates in the reordering
-    Weighted = False #Whether to use the weighted graph laplacian
+    Weighted = True #Whether to use the weighted graph laplacian
     NPeriods = 20
     SamplesPerPeriod = 12
     N = NPeriods*SamplesPerPeriod
     t = np.linspace(0, 2*np.pi*NPeriods, N)
     t2 = np.linspace(0, 2*np.pi, N)
-    x = np.cos(t) + np.cos(3*t) + np.cos(5*t)
+    x = np.cos(t) + 0.5*np.cos(3*t) + 0.5*np.cos(5*t)
     x = x + 0.6*np.random.randn(len(x))
-    x2 = np.cos(t2) + np.cos(3*t2) + np.cos(5*t2)
+    x2 = np.cos(t2) + 0.5*np.cos(3*t2) + 0.5*np.cos(5*t2)
 
-    dim = 40 #Sliding window length
+    doPlot = True
+    dim = int(np.round(estimateFundamentalFreq(x, shortBias = 0.0, doPlot = doPlot)[0]))
+    if doPlot:
+        plt.show()
+    dim = 2*dim
+    print("dim = %i"%dim)
     (X, xidx) = getSlidingWindow(x, dim, 1, 1)
     
     #Use rips filtration to guide Laplacian
@@ -53,7 +59,7 @@ if __name__ == '__main__':
     thresh = np.argmax(I[:, 1] - I[:, 0])
     thresh = np.mean(I[thresh, :])
     if Weighted:
-        res = getLapCircularCoordinatesSigma(D, thresh)
+        res = getLapCircularCoordinatesSigma(D, thresh, doPlot = True)
     else:
         res = getLapCircularCoordinatesThresh(D, thresh)
     [w, v, theta, A] = [res['w'], res['v'], res['theta'], res['A']]
@@ -133,3 +139,6 @@ if __name__ == '__main__':
     plt.ylim(ylims)
     plt.title("Spline Consensus reordering")
     plt.show()
+
+if __name__ == '__main__':
+    ReorderingExample1D()

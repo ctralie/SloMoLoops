@@ -74,14 +74,17 @@ def getLapCircularCoordinatesSigma(D, sigma, NEigs = 20, doPlot = False):
             smallest = bothSum
             i1 = i       
     if doPlot:
-        plt.subplot(211)
+        plt.subplot(311)
         plt.imshow(v, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
         plt.xlim([0, v.shape[1]])
         plt.title("Eigenvectors")
-        plt.subplot(212)
+        plt.subplot(312)
         plt.plot(zcs)
         plt.title("Zero Crossings, Smallest = (%i, %i)"%(i1, i1+1))
         plt.xlim([0, v.shape[1]])
+        plt.subplot(313)
+        plt.plot(v[:, [i1, i1+1]])
+        plt.legend(["%i"%i1, "%i"%(i1+1)])
         plt.show()
     (theta, thetau) = getLapThetas(v, i1, i1+1)
     return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
