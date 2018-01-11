@@ -5,7 +5,8 @@ import scipy.misc
 from skimage.transform import pyramid_gaussian
 import pyflann
 from PatchTools import *
-
+from sklearn.decomposition import PCA
+import time
 
 def getCoherenceMatch(X, x0, BpLidx, dim, i, j):
     """
@@ -29,9 +30,11 @@ def getCoherenceMatch(X, x0, BpLidx, dim, i, j):
     #TODO: Vectorize code below
     for n in range(dI.size):
         #Indices of pixel picked for neighbor
-        imidx = int(BpLidx[dI[n]+i, dJ[n]+j][0])
-        ni = BpLidx[dI[n]+i, dJ[n]+j][1]
-        nj = BpLidx[dI[n]+i, dJ[n]+j][1]
+        offi = int(dI[n]+i)
+        offj = int(dJ[n]+j)
+        imidx = int(BpLidx[offi, offj][0])
+        ni = BpLidx[offi, offj][1]
+        nj = BpLidx[offi, offj][1]
         if ni == -1 or nj == -1:
             continue
         ni = int(ni - dI[n])
@@ -45,34 +48,7 @@ def getCoherenceMatch(X, x0, BpLidx, dim, i, j):
             idxmin = [imidx, ni, nj]
     return (idxmin, minDistSqr)
 
-def getGrayscalePatchesImageSet(As, KSpatial, patchfn):
-    if len(As) == 0:
-        return None
-    AllP = patchfn(rgb2gray(As[0]), KSpatial)[None, :, :, :]
-    for A in As[1::]:
-        P = patchfn(rgb2gray(A), KSpatial)[None, :, :, :]
-        AllP = np.concatenate((AllP, P), 0)
-    return AllP
-
-def getColorPatchesImageSet(As, KSpatial, patchfn):
-    if len(As) == 0:
-        return None
-    AllP = np.array([])
-    for A in As:
-        P = np.array([])
-        for k in range(3):
-            Pk = patchfn(A[:, :, k], KSpatial)
-            if P.size == 0:
-                P = Pk
-            else:
-                P = np.concatenate((P, Pk), 2)
-        if AllP.size == 0:
-            AllP = P[None, :, :, :]
-        else:
-            AllP = np.concatenate((AllP, P[None, :, :, :]), 0)
-    return AllP
-
-def getPatchDictionaries(As, Aps, NLevels = 3, KSpatials = [5, 5], patchfn = getColorPatchesImageSet):
+def getPatchDictionaries(As, Aps, NLevels = 3, KSpatials = [5, 5], patchfn = getColorPatchesImageSet, kPCA = 5):
     """
     :param As: An array of images of the same dimension
     :param Aps: An array of images of the same dimension as As, parallel to As
@@ -87,28 +63,48 @@ def getPatchDictionaries(As, Aps, NLevels = 3, KSpatials = [5, 5], patchfn = get
     annLists = {}
     Xs = {}
     annidx2idxs = {}
+    pcaBases = {}
+    X = np.array([])
     for level in range(NLevels, -1, -1):
+        pcaBases[level] = None
+        X = np.array([])
         print("Level %i"%level)
         KSpatial = KSpatials[-1]
         if level == 0:
             KSpatial = KSpatials[0]
         #Step 1: Make features
-        APatches = patchfn([ALs[i][level] for i in range(len(ALs))], KSpatial, getPatches)
-        ApPatches = patchfn([ApLs[i][level] for i in range(len(ApLs))], KSpatial, getCausalPatches)
-        X = np.concatenate((APatches, ApPatches), 3)
-        print("X.shape = {}".format(X.shape))
-        if level < NLevels:
-            #Use multiresolution features
-            As2 = [scipy.misc.imresize(ALs[i][level+1], ALs[i][level].shape) for i in range(len(ALs))]
-            Aps2 = [scipy.misc.imresize(ApLs[i][level+1], ApLs[i][level].shape) for i in range(len(ApLs))]
-            A2Patches = patchfn(As2, KSpatial, getPatches)
-            Ap2Patches = patchfn(Aps2, KSpatial, getPatches)
-            X = np.concatenate((X, A2Patches, Ap2Patches), 3)
+        for i in range(len(ALs)):
+            APatches = patchfn([ALs[i][level]], KSpatial, getPatches)
+            ApPatches = patchfn([ApLs[i][level]], KSpatial, getCausalPatches)
+            Xi = np.concatenate((APatches, ApPatches), 3)
+            print("X.shape = {}".format(X.shape))
+            if level < NLevels:
+                #Use multiresolution features
+                As2 = [scipy.misc.imresize(ALs[i][level+1], ALs[i][level].shape)]
+                Aps2 = [scipy.misc.imresize(ApLs[i][level+1], ApLs[i][level].shape)]
+                A2Patches = patchfn(As2, KSpatial, getPatches)
+                Ap2Patches = patchfn(Aps2, KSpatial, getPatches)
+                Xi = np.concatenate((Xi, A2Patches, Ap2Patches), 3)
+            XiShape = Xi.shape
+            Xi = np.reshape(Xi, [Xi.shape[0]*Xi.shape[1]*Xi.shape[2], Xi.shape[3]])
+            if not pcaBases[level]:
+                pca = PCA(n_components = kPCA)
+                pca.fit(Xi)
+                print("Explained Variance PCA Level %i: %g"%(level, \
+                    np.sum(pca.explained_variance_ratio_)))
+                pcaBases[level] = pca
+            Xi = pcaBases[level].transform(Xi)
+            Xi = np.reshape(Xi, [XiShape[0], XiShape[1], XiShape[2], Xi.shape[1]])
+            if X.size == 0:
+                X = Xi
+            else:
+                X = np.concatenate((X, Xi), 3)
         annList = pyflann.FLANN()
         annList.build_index(np.reshape(X, [X.shape[0]*X.shape[1]*X.shape[2], X.shape[3]]))
         annLists[level] = annList
         Xs[level] = X
-    return {'annLists':annLists, 'ALs':ALs, 'ApLs':ApLs, 'Xs':Xs}
+
+    return {'annLists':annLists, 'ALs':ALs, 'ApLs':ApLs, 'Xs':Xs, 'pcaBases':pcaBases}
 
 def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], patchfn = getColorPatchesImageSet):
     """
@@ -118,7 +114,7 @@ def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], p
     """
     print("Getting patch dictionaries...")
     res = getPatchDictionaries(As, Aps, NLevels = NLevels, KSpatials = KSpatials, patchfn = patchfn)
-    [ALs, ApLs, Xs, annLists] = [res['ALs'], res['ApLs'], res['Xs'], res['annLists']]
+    [ALs, ApLs, Xs, annLists, pcaBases] = [res['ALs'], res['ApLs'], res['Xs'], res['annLists'], res['pcaBases']]
 
     print("Doing image analogies...")
     BL = tuple(pyramid_gaussian(B, NLevels, downscale = 2))
@@ -169,10 +165,14 @@ def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], p
                     BPatch = patchfn([B2[i-d:i+d+1, j-d:j+d+1, :]], KSpatial, getPatches)
                     BpPatch = patchfn([Bp2[i-d:i+d+1, j-d:j+d+1, :]], KSpatial, getPatches)
                     F = np.concatenate((F, BPatch.flatten(), BpPatch.flatten()))
+                #Put F into PCA basis
+                F = F.flatten()
+                F = pcaBases[level].transform(F[None, :])
                 #Find index of most closely matching feature point in A
                 idx = annLists[level].nn_index(F)[0].flatten()
                 X = Xs[level]
                 idx = np.unravel_index(idx, (X.shape[0], X.shape[1], X.shape[2]))
+                idx = np.array(idx, dtype = np.int64).flatten()
                 if Kappa > 0:
                 #Compare with coherent pixel
                     (idxc, distSqrc) = getCoherenceMatch(X, F, BpLidx[level], KSpatial, i, j)
@@ -180,7 +180,6 @@ def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], p
                     fac = 1 + Kappa*(2.0**(level - NLevels))
                     if distSqrc < distSqr*fac*fac:
                         idx = idxc
-                idx = np.array(idx, dtype = np.int64).flatten()
                 BpLidx[level][i, j, :] = idx
                 BpL[level][i, j, :] = ApLs[idx[0]][level][idx[1]+d, idx[2]+d, :]
             if i%20 == 0:
@@ -197,6 +196,49 @@ def doImageAnalogies(As, Aps, B, Kappa = 0.0, NLevels = 3, KSpatials = [5, 5], p
         plt.savefig("%i_idx.png"%level, bbox_inches = 'tight')
     return BpL[0]
 
+def flattenPatchArray(X):
+    X = np.reshape(X, [X.shape[0]*X.shape[1]*X.shape[2], X.shape[3]])
+    return X
+
+def doImageAnalogiesAcausal(As, Aps, B, KSpatial = 5, \
+        patchfn = getColorPatchesImageSet, outputIters = False):
+    BPatches = patchfn([B], KSpatial, getPatches)
+    ShapeBefore = BPatches.shape[1::]
+    BPatches = flattenPatchArray(BPatches)
+    BpPatches = np.array([])
+    minDists = np.array([])
+    for i in range(len(As)):
+        #Loop through for memory reasons
+        APatches = patchfn([As[i]], KSpatial, getPatches)
+        ApPatches = patchfn([Aps[i]], KSpatial, getPatches)
+        APatches = flattenPatchArray(APatches)
+        ApPatches = flattenPatchArray(ApPatches)
+        #Build ANN function off of A patches
+        annList = pyflann.FLANN()
+        print("Building ANN list...")
+        tic = time.time()
+        annList.build_index(APatches)
+        print("Elapsed Time: %g"%(time.time() - tic))
+        print("Finding nearest neighbors...")
+        tic = time.time()
+        (idx, dists) = annList.nn_index(BPatches)
+        print("Elapsed Time: %g"%(time.time() - tic))
+        if i == 0:
+            BpPatches = ApPatches[idx, :]
+            minDists = dists
+        else:
+            bidx = np.arange(BpPatches.shape[0])
+            bidx = bidx[dists < minDists]
+            BpPatches[bidx] = ApPatches[idx[bidx], :]
+            minDists[bidx] = dists[bidx]
+            print("%g%s Better Patches"%(100*float(len(bidx))/BpPatches.shape[0], '%'))
+        if outputIters:
+            Bp = recombineColorPatches(np.reshape(BpPatches, ShapeBefore),
+                                        KSpatial, B.shape[0], B.shape[1])
+            writeImage(Bp, "BPIter%i.png"%i)
+    BpPatches = np.reshape(BpPatches, ShapeBefore)
+    return recombineColorPatches(BpPatches, KSpatial, B.shape[0], B.shape[1])
+
 def testSuperRes(fac, Kappa, NLevels, fileprefix):
     from VideoTools import loadImageIOVideo
     import skimage.transform
@@ -204,7 +246,7 @@ def testSuperRes(fac, Kappa, NLevels, fileprefix):
     IDims2 = (int(IDims[0]*fac), int(IDims[1]*fac))
     As = []
     Aps = []
-    for i in range(100, 120, 4):
+    for i in range(100, 120):
         Ap = np.reshape(I[i, :], IDims)
         A = skimage.transform.resize(Ap, IDims2)
         A = skimage.transform.resize(A, IDims)
@@ -219,8 +261,9 @@ def testSuperRes(fac, Kappa, NLevels, fileprefix):
     writeImage(Ap, "%sAp.png"%fileprefix)
     writeImage(B, "%sB.png"%fileprefix)
     writeImage(BpGT, "%sBpGT.png"%fileprefix)
-    Bp = doImageAnalogies(As, Aps, B, Kappa = Kappa, NLevels = NLevels)
+    #Bp = doImageAnalogies(As, Aps, B, Kappa = Kappa, NLevels = NLevels)
+    Bp = doImageAnalogiesAcausal(As, Aps, B, KSpatial = 5, outputIters = True)
     writeImage(Bp, "%sBP.png"%fileprefix)
 
 if __name__ == '__main__':
-    testSuperRes(fac = 0.25, Kappa = 0, NLevels = 2, fileprefix = "")
+    testSuperRes(fac = 0.25, Kappa = 1, NLevels = 2, fileprefix = "")

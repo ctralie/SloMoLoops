@@ -15,6 +15,11 @@ def writeImage(I, filename):
     IRet = np.array(IRet, dtype=np.uint8)
     scipy.misc.imsave(filename, IRet)
 
+def resizeImage(F, dims):
+    FNew = scipy.misc.imresize(np.array(255*F, dtype = np.uint8), dims)
+    FNew = np.array(FNew, dtype = np.float64)/255.0
+    return FNew
+
 def rgb2gray(rgb):
     r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
     gray = 0.2989 * r + 0.5870 * g + 0.1140 * b
