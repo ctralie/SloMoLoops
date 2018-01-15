@@ -85,7 +85,6 @@ def getLapCircularCoordinatesSigma(D, sigma, NEigs = 20, doPlot = False):
         plt.subplot(313)
         plt.plot(v[:, [i1, i1+1]])
         plt.legend(["%i"%i1, "%i"%(i1+1)])
-        plt.show()
     (theta, thetau) = getLapThetas(v, i1, i1+1)
     return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
 
