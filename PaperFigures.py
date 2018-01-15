@@ -34,24 +34,25 @@ def getSlidingWindow(x, dim, Tau, dT):
 def ReorderingExample1D():
     np.random.seed(100)
     useGroundTruth = False #Whether to use ground truth circular coordinates in the reordering
-    Weighted = True #Whether to use the weighted graph laplacian
+    Weighted = False #Whether to use the weighted graph laplacian
     NPeriods = 20
     SamplesPerPeriod = 12
     N = NPeriods*SamplesPerPeriod
     t = np.linspace(0, 2*np.pi*NPeriods, N)
     t2 = np.linspace(0, 2*np.pi, N)
-    x = np.cos(t) + 0.5*np.cos(3*t) + 0.5*np.cos(5*t)
+    cs = [1.0, 1.0, 1.0]
+    x = cs[0]*np.cos(t) + cs[1]*np.cos(3*t) + cs[2]*np.cos(5*t)
     x = x + 0.6*np.random.randn(len(x))
-    x2 = np.cos(t2) + 0.5*np.cos(3*t2) + 0.5*np.cos(5*t2)
+    x2 = cs[0]*np.cos(t2) + cs[1]*np.cos(3*t2) + cs[2]*np.cos(5*t2)
 
-    doPlot = True
+    doPlot = False
     dim = int(np.round(estimateFundamentalFreq(x, shortBias = 0.0, doPlot = doPlot)[0]))
     if doPlot:
         plt.show()
     dim = 2*dim
     print("dim = %i"%dim)
     (X, xidx) = getSlidingWindow(x, dim, 1, 1)
-    
+
     #Use rips filtration to guide Laplacian
     D = getSSM(X)
     Is = ripser.doRipsFiltrationDM(D, 1, coeff=41)
@@ -63,16 +64,20 @@ def ReorderingExample1D():
     else:
         res = getLapCircularCoordinatesThresh(D, thresh)
     [w, v, theta, A] = [res['w'], res['v'], res['theta'], res['A']]
-    
+
     ##Ground truth
     if useGroundTruth:
         theta = np.mod(t[0:len(theta)], 2*np.pi)
-    
-    ridx = np.argsort(theta)
+
+    tu = np.unwrap(theta)
+    if tu[-1] - tu[0] < 0:
+        tu = -tu
+    tu = tu - np.min(tu)
+    ridx = np.argsort(np.mod(tu, 2*np.pi))
     xresort = x[ridx]
 
     #Do denoising
-    y = getReorderedConsensus1D(X, len(x), theta, doPlot = True)
+    y = getReorderedConsensus1D(X, len(x), theta, doPlot = doPlot)
 
     #Make color array
     c = plt.get_cmap('Spectral')
@@ -115,7 +120,7 @@ def ReorderingExample1D():
     plt.subplot(244)
     plt.plot(theta)
     plt.title("Circular Coordinates")
-    
+
     plt.subplot(245)
     ripser.plotDGM(I)
     plt.title("H1")
@@ -138,7 +143,7 @@ def ReorderingExample1D():
     plt.plot(y)
     plt.ylim(ylims)
     plt.title("Spline Consensus reordering")
-    plt.show()
+    plt.savefig("Paper/Figures/1DExample.svg", bbox_inches = 'tight')
 
 if __name__ == '__main__':
     ReorderingExample1D()

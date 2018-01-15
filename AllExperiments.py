@@ -3,8 +3,8 @@ import os
 import numpy as np
 from VideoReordering import *
 
-Videos=['jumpingjacks2menlowres.ogg', 'jumpingjacks2men.ogg', 'Videos/ChrisNeckAmp.avi'\
-        'Videos/face_results.avi', 'Videos/baby_results.mp4', 'Videos/throat_mag_crop.mp4',
+Videos=['Videos/ChrisNeckAmp.avi','jumpingjacks2menlowres.ogg',\
+        'Videos/face_results.mp4', 'Videos/baby_result.mp4', 'Videos/throat_mag_crop.mp4',
         'Videos/exercise_1_crop.mp4', 'Videos/exercise_2_crop.mp4']
 LapOpt = ["--is-unweighted-laplacian", "--is-weighted-laplacian"]
 MedianOpt = ["--is-simple-reorder", "--is-median-reorder"]

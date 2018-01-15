@@ -288,7 +288,7 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         plt.subplot(234)
         plt.imshow(v, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
         plt.subplot(235)
-        plt.scatter(v[:, 1], v[:, 2], 20, np.arange(v.shape[0]), cmap = 'spectral')
+        plt.scatter(v[:, idxs[0]], v[:, idxs[1]], 20, np.arange(v.shape[0]), cmap = 'spectral')
         plt.title("Eigs %i and %i"%(idxs[0], idxs[1]))
         plt.subplot(236)
         plt.plot(theta)
