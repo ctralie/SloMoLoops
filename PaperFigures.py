@@ -35,8 +35,7 @@ def getSlidingWindow(x, dim, Tau, dT):
 def MSE(x1, x2):
     return np.mean((x1-x2)**2)
 
-def ReorderingExample1D(seed, Weighted):
-    useGroundTruth = False #Whether to use ground truth circular coordinates in the reordering
+def ReorderingExample1D(seed):
     NPeriods = 20
     SamplesPerPeriod = 12
     N = NPeriods*SamplesPerPeriod
@@ -53,6 +52,11 @@ def ReorderingExample1D(seed, Weighted):
     print("dim = %i"%dim)
     (X, xidx) = getSlidingWindow(x, dim, 1, 1)
 
+    #Make color array
+    c = plt.get_cmap('Spectral')
+    C = c(np.array(np.round(np.linspace(0, 255, X.shape[0])), dtype=np.int32))
+    C = C[:, 0:3]
+
     #Make ground truth cycle
     t2 = np.linspace(0, 2*np.pi, X.shape[0])
     xgt = cs[0]*np.cos(t2) + cs[1]*np.cos(3*t2) + cs[2]*np.cos(5*t2)
@@ -63,41 +67,16 @@ def ReorderingExample1D(seed, Weighted):
     I = Is[1]
     thresh = np.argmax(I[:, 1] - I[:, 0])
     thresh = np.mean(I[thresh, :])
-    if Weighted:
-        res = getLapCircularCoordinatesSigma(D, thresh, NEigs = 10)
-    else:
-        res = getLapCircularCoordinatesThresh(D, thresh, NEigs = 10)
-    [w, v, theta, A, idxs] = [res['w'], res['v'], res['theta'], res['A'], res['idxs']]
+    
+    #Do both weighted and unweighted Laplacian
+    resw = getLapCircularCoordinatesSigma(D, thresh, NEigs = 10)
+    resu = getLapCircularCoordinatesThresh(D, thresh, NEigs = 10)
+    ress = {'Weighted':resw, 'Unweighted':resu}
 
-    ##Ground truth
-    if useGroundTruth:
-        theta = np.mod(t[0:len(theta)], 2*np.pi)
-
-    tu = np.unwrap(theta)
-    if tu[-1] - tu[0] < 0:
-        tu = -tu
-    tu = tu - np.min(tu)
-    ridx = np.argsort(np.mod(tu, 2*np.pi))
-    xresort = x[ridx]
-
-    #Do denoising
-    (YVotes, y, winidx) = getReorderedConsensus1D(X, X.shape[0], theta, doPlot = doPlot)
-    sio.savemat("YVotes.mat", {"YVotes":YVotes})
-
-    #Make color array
-    c = plt.get_cmap('Spectral')
-    C = c(np.array(np.round(np.linspace(0, 255, X.shape[0])), dtype=np.int32))
-    C = C[:, 0:3]
-
-    #Perform PCA down to 2D for visualization
-    pca = PCA(n_components = 2)
-    Y = pca.fit_transform(X)
-    eigs = pca.explained_variance_
-
-
-    fig = plt.figure(figsize=(28, 12))
+    fres = 3
+    fig = plt.figure(figsize=(fres*5, fres*3))
     ylims = np.array([-3.5, 3.5])
-    plt.subplot(2, 5, 1)
+    plt.subplot(3, 5, 1)
     drawLineColored(np.arange(len(x)), x, C[xidx, :])
     plt.plot([0, 0], ylims*0.9, 'w')
     plt.plot([dim-1]*2, ylims*0.9, 'w')
@@ -110,68 +89,91 @@ def ReorderingExample1D(seed, Weighted):
     plt.title("Original Signal, Sliding Window d = %i"%dim)
     plt.xlabel("t")
 
-    #ax2 = fig.add_subplot(132, projection = '3d')
-    plt.subplot(2, 5, 2)
-    plt.title("Sliding Window Adjacency Matrix\nWin = %i, thresh = %g"%(dim, thresh))
-    plt.imshow(np.log(A + 1e-10), cmap='gray')
+    plt.subplot(3, 5, 2)
+    plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
+    plt.xlabel("Window Index")
+    plt.ylabel("Window Index")
+    plt.colorbar()
+    plt.title("Sliding Window SSM")
 
-    plt.subplot(2, 5, 3)
-    plt.title("Laplacian Eigenvectors")
-    plt.imshow(v, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
-    plt.xlabel("Eigenvector Number")
-    plt.ylabel("Window index")
+    plt.subplot(3, 5, 3)
+    lims = [np.min(I), np.max(I)]
+    plt.plot(lims, lims, 'k')
+    plt.scatter(I[:, 0], I[:, 1], 20)
+    imax = np.argmax(I[:, 1] - I[:, 0])
+    plt.scatter(I[imax, 0], I[imax, 1], 40)
+    plt.plot([lims[0], thresh], [thresh, thresh], 'k', linestyle='--')
+    plt.plot([thresh, thresh], [thresh, lims[0]], 'k', linestyle='--')
+    plt.plot([I[imax, 0]]*2, I[imax, :], 'r')
+    plt.xlabel("Birth Time")
+    plt.ylabel("Death Time")
+    plt.title("H1 Persistence Diagram")
 
-    plt.subplot(2, 5, 4)
-    plt.scatter(v[:, 1], v[:, 2], 20, c=C, edgecolor = 'none')
-    plt.xlabel("Laplacian Eigenvector %i"%idxs[0])
-    plt.ylabel("Laplacian Eigenvector %i"%idxs[1])
-    plt.title("Laplacian Eigenmap")
-    ax = plt.gca()
-    ax.set_axis_bgcolor(plotbgcolor)
-    ax.set_xticks([])
-    ax.set_yticks([])
+    for count, resType in enumerate(ress):
+        res = ress[resType]
+        [w, v, theta, A, idxs] = [res['w'], res['v'], res['theta'], res['A'], res['idxs']]
 
-    plt.subplot(2, 5, 5)
-    plt.plot(theta)
-    plt.title("Circular Coordinates")
+        tu = np.unwrap(theta)
+        if tu[-1] - tu[0] < 0:
+            tu = -tu
+        tu = tu - np.min(tu)
+        ridx = np.argsort(np.mod(tu, 2*np.pi))
+        xresort = x[ridx]
 
-    plt.subplot(2, 5, 6)
-    ripser.plotDGM(I)
-    plt.title("H1")
+        #Do denoising
+        (YVotes, y, winidx) = getReorderedConsensus1D(X, X.shape[0], theta, doPlot = doPlot)
 
-    plt.subplot(2, 5, 7)
-    plt.plot(xgt)
-    plt.ylim(ylims)
-    plt.title("Ground Truth Cycle")
+        plt.subplot(3, 5, 4+count)
+        plt.title("%s Adjacency Matrix"%(resType))
+        plt.imshow(np.log(A + 1e-10), cmap='gray', interpolation = 'nearest')
+        plt.xlabel("Window Index")
+        plt.ylabel("Window Index")
+        #plt.imshow(A, cmap = 'gray', interpolation = 'nearest')
 
-    plt.subplot(2, 5, 8)
-    drawLineColored(np.arange(len(xresort)), xresort, C[ridx], linewidth=1.5)
-    plt.plot(xgt, linestyle='--', color=[0.8]*3)
-    ax = plt.gca()
-    ax.set_axis_bgcolor(plotbgcolor)
-    plt.ylim(ylims)
-    plt.title("Reordered Signal, MSE = %.3g"%MSE(xresort, xgt))
+        plt.subplot(3, 5, 5*(1+count)+1)
+        plt.scatter(v[:, 1], v[:, 2], 20, c=C, edgecolor = 'none')
+        plt.xlabel("Eigenvector %i"%idxs[0])
+        plt.ylabel("Eigenvector %i"%idxs[1])
+        plt.title("%s Laplacian Eigenmap"%resType)
+        ax = plt.gca()
+        ax.set_axis_bgcolor(plotbgcolor)
+        ax.set_xticks([])
+        ax.set_yticks([])
 
-    plt.subplot(2, 5, 9)
-    winidx2orig = 0*winidx
-    winidx2orig[winidx] = np.arange(len(winidx))
-    for i in range(YVotes.shape[0]):
-        idx = winidx2orig[i]
-        plt.plot(np.arange(YVotes.shape[1]), YVotes[idx, :], color = C[winidx[idx], :])
-    mse = np.mean(np.array([MSE(YVotes[i, :], xgt) for i in range(YVotes.shape[0])]))
-    plt.title("Interpolated Window Votes, Average MSE = %.3g"%mse)
+        plt.subplot(3, 5, 5*(1+count)+2)
+        plt.plot(theta)
+        plt.title("Circular Coordinates")
+        plt.xlabel("Window Index")
+        plt.ylabel("$\\theta$")
 
-    plt.subplot(2, 5, 10)
-    plt.plot(y, linewidth=4)
-    plt.plot(xgt, linestyle='--')
-    plt.ylim(ylims)
-    plt.title("Spline Consensus reordering, MSE = %.3g"%MSE(y, xgt))
+        plt.subplot(3, 5, 5*(1+count)+3)
+        drawLineColored(np.arange(len(xresort)), xresort, C[ridx], linewidth=1.5)
+        #plt.plot(xgt, linestyle='--', color=[0.8]*3, linewidth=4)
+        ax = plt.gca()
+        ax.set_axis_bgcolor(plotbgcolor)
+        plt.ylim(ylims)
+        plt.title("Reordered Signal\nMSE = %.3g"%MSE(xresort, xgt))
+        plt.xlabel("t'")
+
+        plt.subplot(3, 5, 5*(1+count)+4)
+        winidx2orig = 0*winidx
+        winidx2orig[winidx] = np.arange(len(winidx))
+        for i in range(YVotes.shape[0]):
+            idx = winidx2orig[i]
+            plt.plot(np.arange(YVotes.shape[1]), YVotes[idx, :], color = C[winidx[idx], :])
+        mse = np.mean(np.array([MSE(YVotes[i, :], xgt) for i in range(YVotes.shape[0])]))
+        plt.title("Interpolated Window Votes\nAverage MSE = %.3g"%mse)
+        plt.xlabel("t'")
+
+        plt.subplot(3, 5, 5*(1+count)+5)
+        plt.plot(y, linewidth=4)
+        plt.plot(xgt, linestyle='--')
+        plt.ylim(ylims)
+        plt.title("Spline Consensus reordering\nMSE = %.3g"%MSE(y, xgt))
+        plt.xlabel("t'")
 
 if __name__ == '__main__':
     seed = 0
     plt.clf()
-    ReorderingExample1D(seed, True)
-    plt.savefig("Paper/Figures/1DExample%i_Weighted.png"%seed, bbox_inches = 'tight')
-    plt.clf()
-    ReorderingExample1D(seed, False)
-    plt.savefig("Paper/Figures/1DExample%i_Unweighted.png"%seed, bbox_inches = 'tight')
+    ReorderingExample1D(seed)
+    plt.savefig("Paper/Figures/1DExample.svg", bbox_inches = 'tight')
