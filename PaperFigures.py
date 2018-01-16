@@ -8,11 +8,12 @@ from CSMSSMTools import *
 from FundamentalFreq import *
 from sklearn.decomposition import PCA
 from ripser import ripser
+from mpl_toolkits.mplot3d import Axes3D
 
-def drawLineColored(idx, x, C):
+def drawLineColored(idx, x, C, linewidth = 1):
     plt.hold(True)
     for i in range(len(x)-1):
-        plt.plot(idx[i:i+2], x[i:i+2], c=C[i, :])
+        plt.plot(idx[i:i+2], x[i:i+2], c=C[i, :], linewidth = linewidth)
 
 def getSlidingWindow(x, dim, Tau, dT):
     N = len(x)
@@ -31,18 +32,19 @@ def getSlidingWindow(x, dim, Tau, dT):
         xidx.append(xidx[-1])
     return (X, xidx)
 
+def MSE(x1, x2):
+    return np.mean((x1-x2)**2)
+
 def ReorderingExample1D(seed, Weighted):
     useGroundTruth = False #Whether to use ground truth circular coordinates in the reordering
     NPeriods = 20
     SamplesPerPeriod = 12
     N = NPeriods*SamplesPerPeriod
     t = np.linspace(0, 2*np.pi*NPeriods, N)
-    t2 = np.linspace(0, 2*np.pi, N)
     cs = [1.0, 1.0, 1.0]
     x = cs[0]*np.cos(t) + cs[1]*np.cos(3*t) + cs[2]*np.cos(5*t)
     np.random.seed(seed)
     x = x + 0.6*np.random.randn(len(x))
-    x2 = cs[0]*np.cos(t2) + cs[1]*np.cos(3*t2) + cs[2]*np.cos(5*t2)
 
     doPlot = False
     dim = int(np.round(estimateFundamentalFreq(x, shortBias = 0.0, doPlot = doPlot)[0]))
@@ -50,6 +52,10 @@ def ReorderingExample1D(seed, Weighted):
         plt.show()
     print("dim = %i"%dim)
     (X, xidx) = getSlidingWindow(x, dim, 1, 1)
+
+    #Make ground truth cycle
+    t2 = np.linspace(0, 2*np.pi, X.shape[0])
+    xgt = cs[0]*np.cos(t2) + cs[1]*np.cos(3*t2) + cs[2]*np.cos(5*t2)
 
     #Use rips filtration to guide Laplacian
     D = getSSM(X)
@@ -75,7 +81,8 @@ def ReorderingExample1D(seed, Weighted):
     xresort = x[ridx]
 
     #Do denoising
-    (YVotes, y) = getReorderedConsensus1D(X, len(x), theta, doPlot = doPlot)
+    (YVotes, y, winidx) = getReorderedConsensus1D(X, X.shape[0], theta, doPlot = doPlot)
+    sio.savemat("YVotes.mat", {"YVotes":YVotes})
 
     #Make color array
     c = plt.get_cmap('Spectral')
@@ -94,8 +101,8 @@ def ReorderingExample1D(seed, Weighted):
     drawLineColored(np.arange(len(x)), x, C[xidx, :])
     plt.plot([0, 0], ylims*0.9, 'w')
     plt.plot([dim-1]*2, ylims*0.9, 'w')
-    plt.plot([0, dim-1], [ylims[0]]*2, 'w')
-    plt.plot([0, dim-1], [ylims[1]]*2, 'w')
+    plt.plot([0, dim-1], [ylims[0]*0.9]*2, 'w')
+    plt.plot([0, dim-1], [ylims[1]*0.9]*2, 'w')
     ax = plt.gca()
     plotbgcolor = (0.15, 0.15, 0.15)
     ax.set_axis_bgcolor(plotbgcolor)
@@ -133,30 +140,38 @@ def ReorderingExample1D(seed, Weighted):
     plt.title("H1")
 
     plt.subplot(2, 5, 7)
-    plt.plot(x2)
+    plt.plot(xgt)
     plt.ylim(ylims)
     plt.title("Ground Truth Cycle")
 
     plt.subplot(2, 5, 8)
-    drawLineColored(np.arange(len(xresort)), xresort, C[ridx])
+    drawLineColored(np.arange(len(xresort)), xresort, C[ridx], linewidth=1.5)
+    plt.plot(xgt, linestyle='--', color=[0.8]*3)
     ax = plt.gca()
     ax.set_axis_bgcolor(plotbgcolor)
     plt.ylim(ylims)
-    plt.title("Reordered Signal")
+    plt.title("Reordered Signal, MSE = %.3g"%MSE(xresort, xgt))
 
     plt.subplot(2, 5, 9)
-    plt.imshow(YVotes, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
+    winidx2orig = 0*winidx
+    winidx2orig[winidx] = np.arange(len(winidx))
+    for i in range(YVotes.shape[0]):
+        idx = winidx2orig[i]
+        plt.plot(np.arange(YVotes.shape[1]), YVotes[idx, :], color = C[winidx[idx], :])
+    mse = np.mean(np.array([MSE(YVotes[i, :], xgt) for i in range(YVotes.shape[0])]))
+    plt.title("Interpolated Window Votes, Average MSE = %.3g"%mse)
 
     plt.subplot(2, 5, 10)
-    plt.plot(y)
+    plt.plot(y, linewidth=4)
+    plt.plot(xgt, linestyle='--')
     plt.ylim(ylims)
-    plt.title("Spline Consensus reordering")
+    plt.title("Spline Consensus reordering, MSE = %.3g"%MSE(y, xgt))
 
 if __name__ == '__main__':
     seed = 0
     plt.clf()
     ReorderingExample1D(seed, True)
-    plt.savefig("Paper/Figures/1DExample%i_Weighted.svg"%seed, bbox_inches = 'tight')
+    plt.savefig("Paper/Figures/1DExample%i_Weighted.png"%seed, bbox_inches = 'tight')
     plt.clf()
     ReorderingExample1D(seed, False)
-    plt.savefig("Paper/Figures/1DExample%i_Unweighted.svg"%seed, bbox_inches = 'tight')
+    plt.savefig("Paper/Figures/1DExample%i_Unweighted.png"%seed, bbox_inches = 'tight')

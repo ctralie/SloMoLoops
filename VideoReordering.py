@@ -58,9 +58,9 @@ def getReorderedConsensus1D(X, N, theta, doPlot = False):
     print("NPeriods = %g"%NPeriods)
     print("N/NPeriods = %g"%(float(N)/NPeriods))
     tu = N*np.mod(tu, 2*np.pi)/(2*np.pi)
-    idx = np.argsort(tu)
-    X2 = X[idx, :]
-    t1 = tu[idx]
+    tidx = np.argsort(tu)
+    X2 = X[tidx, :]
+    t1 = tu[tidx]
     
     #Step 2: Go through each window and use it to vote on final samples
     Z = np.ones((M, N))
@@ -88,7 +88,7 @@ def getReorderedConsensus1D(X, N, theta, doPlot = False):
         plt.xlabel("Time")
         plt.ylabel("Spline Interpolated Windows")
         plt.show()
-    return (Z, np.nanmedian(Z, 0))
+    return (Z, np.nanmedian(Z, 0), tidx)
 
 def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Verbose = False, lookAtVotes = False):
     """
