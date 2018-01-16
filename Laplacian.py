@@ -50,18 +50,7 @@ def getSlopes(thetas, sWin = 10):
     slopes[-(sWin+1):] = slopes[-(sWin+1)]
     return slopes
 
-def getLapCircularCoordinatesSigma(D, sigma, NEigs = 20, doPlot = False):
-    """
-    Get circular coordinates using a weighted laplacian 
-    :param pD: Distance matrix
-    :param sigma: Standard deviation for exponential kernel
-    :param NEigs: Maximum number of eigenvectors to compute
-    :return {'w':eigenvalues, 'v':eigenvectors, 'theta':Circular coordinates,\
-            'thetau':Unwrapped circular coordinates, 'A':Adjacency matrix}
-    """
-    A = np.exp(-D*D/(2*sigma**2))
-    NEigs = min(NEigs, A.shape[0])
-    (w, v, L) = getLaplacianEigsDense(A, NEigs)
+def getSlowestEigenvectorIdx(v):
     #Compute zero crossings and put the low frequencies eigenvectors first
     s = v > 0
     zcs = np.sum(s[1::, :] - s[0:-1, :], 0)
@@ -72,7 +61,23 @@ def getLapCircularCoordinatesSigma(D, sigma, NEigs = 20, doPlot = False):
         bothSum = zcs[i] + zcs[i+1]
         if bothSum < smallest:
             smallest = bothSum
-            i1 = i       
+            i1 = i
+    return (i1, zcs)
+
+def getLapCircularCoordinatesSigma(D, sigma, NEigs = 20, doPlot = False):
+    """
+    Get circular coordinates using a weighted laplacian 
+    :param pD: Distance matrix
+    :param sigma: Standard deviation for exponential kernel
+    :param NEigs: Maximum number of eigenvectors to compute
+    :return {'w':eigenvalues, 'v':eigenvectors, 'theta':Circular coordinates,\
+            'thetau':Unwrapped circular coordinates, 'A':Adjacency matrix}
+    """
+    A = np.exp(-D*D/(sigma))
+    np.fill_diagonal(A, 0)
+    NEigs = min(NEigs, A.shape[0])
+    (w, v, L) = getLaplacianEigsDense(A, NEigs)
+    (i1, zcs) = getSlowestEigenvectorIdx(v)
     if doPlot:
         plt.subplot(311)
         plt.imshow(v, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
@@ -88,12 +93,13 @@ def getLapCircularCoordinatesSigma(D, sigma, NEigs = 20, doPlot = False):
     (theta, thetau) = getLapThetas(v, i1, i1+1)
     return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
 
-def getLapCircularCoordinatesThresh(pD, thresh, doPlot = False):
+def getLapCircularCoordinatesThresh(pD, thresh, NEigs = 20, doPlot = False):
     """
     Get circular coordinates using an unweighted laplacian based
     on binarizing a distance matrix below a certain threshold
     :param pD: Distance matrix
     :param thresh: Threshold below which to include edges
+    :param NEigs: Maximum number of eigenvectors to compute
     :return {'w':eigenvalues, 'v':eigenvectors, 'theta':Circular coordinates,\
             'thetau':Unwrapped circular coordinates, 'A':Adjacency matrix}
     """
@@ -101,16 +107,22 @@ def getLapCircularCoordinatesThresh(pD, thresh, doPlot = False):
     np.fill_diagonal(D, np.inf)
     A = np.zeros(D.shape)
     A[D <= thresh] = 1
-    (w, v, L) = getLaplacianEigsDense(A, 10)
-    (theta, thetau) = getLapThetas(v, 1, 2)
+    (w, v, L) = getLaplacianEigsDense(A, NEigs)
+    (i1, zcs) = getSlowestEigenvectorIdx(v)
     if doPlot:
-        plt.subplot(131)
-        plt.imshow(D, cmap = 'afmhot', interpolation = 'none')
-        plt.subplot(132)
-        plt.imshow(A, cmap = 'gray', interpolation = 'none')
-        plt.subplot(133)
-        plt.imshow(v, cmap = 'afmhot', aspect = 'auto', interpolation = 'none')
-    return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[1, 2]}
+        plt.subplot(311)
+        plt.imshow(v, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
+        plt.xlim([0, v.shape[1]])
+        plt.title("Eigenvectors")
+        plt.subplot(312)
+        plt.plot(zcs)
+        plt.title("Zero Crossings, Smallest = (%i, %i)"%(i1, i1+1))
+        plt.xlim([0, v.shape[1]])
+        plt.subplot(313)
+        plt.plot(v[:, [i1, i1+1]])
+        plt.legend(["%i"%i1, "%i"%(i1+1)])
+    (theta, thetau) = getLapThetas(v, 1, 2)
+    return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
 
 def getLineLaplacian(NPoints):
     I = np.arange(NPoints-1).tolist()

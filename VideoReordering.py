@@ -88,7 +88,7 @@ def getReorderedConsensus1D(X, N, theta, doPlot = False):
         plt.xlabel("Time")
         plt.ylabel("Spline Interpolated Windows")
         plt.show()
-    return np.nanmedian(Z, 0)
+    return (Z, np.nanmedian(Z, 0))
 
 def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Verbose = False, lookAtVotes = False):
     """
