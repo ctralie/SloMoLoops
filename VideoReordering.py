@@ -3,6 +3,8 @@ from ripser import ripser
 from CSMSSMTools import *
 from Laplacian import *
 from FundamentalFreq import *
+from PatchTools import *
+from ImageAnalogies import *
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimage
@@ -13,6 +15,8 @@ from sklearn import manifold
 import argparse
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--show-plots', dest='doPlot', action='store_true', help='Show plots of circular coordinates')
+parser.add_argument('--do-image-analogies', dest='image_analogies', action='store_true', help='use image analogies to sharpen')
 parser.add_argument('--is-median-reorder', dest='median_reorder', action='store_true', help='enable median reordering')
 parser.add_argument('--is-simple-reorder', dest='median_reorder', action='store_false', help='enable simple reordering')
 parser.add_argument('--is-weighted-laplacian', dest='weighted_laplacian', action='store_true', help='enable weighted laplacian')
@@ -27,7 +31,6 @@ parser.set_defaults(weighted_laplacian=False)
 parser.set_defaults(net_feat=False)
 
 opt = parser.parse_args()
-print(opt)
 
 def getReorderedConsensus1D(X, N, theta, doPlot = False):
     """
@@ -55,9 +58,9 @@ def getReorderedConsensus1D(X, N, theta, doPlot = False):
     print("NPeriods = %g"%NPeriods)
     print("N/NPeriods = %g"%(float(N)/NPeriods))
     tu = N*np.mod(tu, 2*np.pi)/(2*np.pi)
-    idx = np.argsort(tu)
-    X2 = X[idx, :]
-    t1 = tu[idx]
+    tidx = np.argsort(tu)
+    X2 = X[tidx, :]
+    t1 = tu[tidx]
     
     #Step 2: Go through each window and use it to vote on final samples
     Z = np.ones((M, N))
@@ -85,7 +88,7 @@ def getReorderedConsensus1D(X, N, theta, doPlot = False):
         plt.xlabel("Time")
         plt.ylabel("Spline Interpolated Windows")
         plt.show()
-    return np.nanmedian(Z, 0)
+    return (Z, np.nanmedian(Z, 0), tidx)
 
 def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Verbose = False, lookAtVotes = False):
     """
@@ -148,7 +151,7 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Ver
     XRet = np.zeros(VT.shape)
     for i in range(VT.shape[0]):
         if Verbose:
-            print("Interpolating window %i of %i"%(i+1, N))
+            print("Taking consensus for window %i of %i"%(i+1, N))
         F = XInterp[:, i, :]
         F = F[np.sum(np.isnan(F), 1) == 0, :]
         F = F.dot(VT) + Mu
@@ -162,8 +165,48 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot = False, Ver
         mpimage.imsave("%s%i.png"%(TEMP_STR, i+1), np.reshape(XRet[i, :], IDims))
     return XRet
     
+def downsampleVideo(I, IDims, fac):
+    INew = []
+    IDimsNew = [int(IDims[0]*fac), int(IDims[1]*fac), 3]
+    for i in range(I.shape[0]):
+        FNew = resizeImage(np.reshape(I[i, :], IDims), IDimsNew)
+        INew.append(FNew.flatten())
+    return (np.array(INew), IDimsNew)
 
-def reorderVideo(XOrig, X_feat, derivWin = 10, Weighted = False, doSimple = False, doPlot = True, Verbose = False):
+def upsampleVideo(I, IDims, IDimsNew):
+    INew = []
+    for i in range(I.shape[0]):
+        FNew = resizeImage(np.reshape(I[i, :], IDims), IDimsNew)
+        INew.append(FNew.flatten())
+    return np.array(INew)
+
+def sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew, NExamples = 20):
+    """
+    Use image analogies to sharpen the consensus video
+    """
+    #Randomly sample 10 analogy image pairs from original video
+    As = []
+    Aps = []
+    np.random.seed(NExamples)
+    for idx in np.random.permutation(XOrig.shape[0])[0:NExamples]:
+        A = np.reshape(XDown[idx, :], IDimsDown)
+        A = resizeImage(A, IDims)
+        Ap = np.reshape(XOrig[idx, :], IDims)
+        As.append(A)
+        Aps.append(Ap)
+    XFinal = []
+    for i in range(XDownNew.shape[0]):
+        print("Doing image analogies sharpening frame %i of %i"%(i, XDownNew.shape[0]))
+        B = np.reshape(XDownNew[i, :], IDimsDown)
+        B = resizeImage(B, IDims)
+        Bp = doImageAnalogiesAcausal(As, Aps, B, KSpatial = 5, outputIters = True)
+        writeImage(Bp, "%s%i.png"%(TEMP_STR, i+1))
+        XFinal.append(Bp.flatten())
+    return np.array(XFinal)
+
+def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
+                doSimple = False, doImageAnalogies = False, doPlot = True, \
+                Verbose = False, fileprefix = ""):
     """
     Reorder the video based on circular coordinates of a sliding
     window embedding
@@ -177,6 +220,7 @@ def reorderVideo(XOrig, X_feat, derivWin = 10, Weighted = False, doSimple = Fals
     :param doPlot: Whether to plot the circular coordinates
     :param Verbose: Whether to print timing information
     """
+    print("doImageAnalogies = ", doImageAnalogies)
     tic = time.time()
     if Verbose:
         print("Doing PCA on video...")
@@ -195,9 +239,18 @@ def reorderVideo(XOrig, X_feat, derivWin = 10, Weighted = False, doSimple = Fals
     if derivWin > 0:
         [X, validIdx] = getTimeDerivative(X, derivWin)
     XIso = manifold.Isomap(10, 2).fit_transform(X)
-    dim = int(np.round(estimateFundamentalFreq(XIso[:, 0], doPlot = doPlot)[0]))
     if doPlot:
-        plt.show()
+        plt.figure(figsize=(18, 12))
+    dim = int(np.round(estimateFundamentalFreq(XIso[:, 0], doPlot = doPlot)[0]))
+    for k in range(2):
+        #Make window size larger, within reason
+        if dim*2 < int(0.25*XOrig.shape[0]):
+            dim *= 2
+    if doPlot:
+        plt.subplot(211)
+        plt.title("Chosen Dim = %i"%dim)
+        plt.savefig("%s_FundamentalFreq.svg"%fileprefix, bbox_inches = 'tight')
+
     print("dim = %i"%dim)
     #Do sliding window
     XS = getSlidingWindowVideoInteger(X, dim)
@@ -212,12 +265,17 @@ def reorderVideo(XOrig, X_feat, derivWin = 10, Weighted = False, doSimple = Fals
     thresh = np.argmax(I[:, 1] - I[:, 0])
     thresh = np.mean(I[thresh, :])
     if Weighted:
+        if doPlot:
+            plt.clf()
         res = getLapCircularCoordinatesSigma(D, thresh, doPlot = doPlot)
+        if doPlot:
+            plt.savefig("%s_Laplacian.svg"%fileprefix, bbox_inches = 'tight')
     else:
         res = getLapCircularCoordinatesThresh(D, thresh)
     [w, v, theta, A, idxs] = [res['w'], res['v'], res['theta'], res['A'], res['idxs']]
 
     if doPlot:
+        plt.clf()
         plt.subplot(231)
         plt.imshow(D, cmap='afmhot', interpolation='none')
         plt.title("SSM Sliding Window")
@@ -230,12 +288,12 @@ def reorderVideo(XOrig, X_feat, derivWin = 10, Weighted = False, doSimple = Fals
         plt.subplot(234)
         plt.imshow(v, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
         plt.subplot(235)
-        plt.scatter(v[:, 1], v[:, 2], 20, np.arange(v.shape[0]), cmap = 'spectral')
+        plt.scatter(v[:, idxs[0]], v[:, idxs[1]], 20, np.arange(v.shape[0]), cmap = 'spectral')
         plt.title("Eigs %i and %i"%(idxs[0], idxs[1]))
         plt.subplot(236)
         plt.plot(theta)
         plt.title("Circular Coordinates")
-        plt.show()
+        plt.savefig("%s_CircCoords.svg"%fileprefix, bbox_inches = 'tight')
     
     if doSimple:
         idx = np.argsort(theta)
@@ -243,8 +301,16 @@ def reorderVideo(XOrig, X_feat, derivWin = 10, Weighted = False, doSimple = Fals
         return XOrig[idx, :]
     else:
         # done for the original video
-        Mu_orig = np.mean(XOrig, 0)[None, :]
-        I_orig = XOrig - Mu_orig
+        # Setup downsampled videos for image analogies
+        if doImageAnalogies:
+            fac = 0.25
+            (XDown, IDimsDown) = downsampleVideo(XOrig, IDims, fac)
+            saveVideo(XDown, IDimsDown, "Downsampled.avi")
+            Mu_orig = np.mean(XDown, 0)[None, :]
+            I_orig = XDown - Mu_orig
+        else:
+            Mu_orig = np.mean(XOrig, 0)
+            I_orig = XOrig - Mu_orig
         ICov_orig = I_orig.dot(I_orig.T)
         [lam_orig, U_orig] = linalg.eigh(ICov_orig)
         pos_lam_orig_inds = lam_orig > 1e-10
@@ -252,23 +318,39 @@ def reorderVideo(XOrig, X_feat, derivWin = 10, Weighted = False, doSimple = Fals
         U_orig = U_orig[:, pos_lam_orig_inds]
         VT_orig = U_orig.T.dot(I_orig)/np.sqrt(lam_orig[:, None])
         X_proj = U_orig*np.sqrt(lam_orig[None, :])
-        print('X proj shape:',X_proj.shape,'X shape:',X.shape)
-        return getReorderedConsensusVideo(X_proj, IDims, Mu_orig, VT_orig, dim, theta, doPlot, Verbose, lookAtVotes = False)
-        #return getReorderedConsensusVideo(X, IDims, Mu, VT, dim, theta, doPlot, Verbose, lookAtVotes = False)
+        if doImageAnalogies:
+            print('X proj shape:',X_proj.shape,'X shape:',XDown.shape)
+            XDownNew = getReorderedConsensusVideo(X_proj, IDimsDown, Mu_orig, VT_orig, dim, theta, doPlot, Verbose, lookAtVotes = False)
+            saveVideo(XDownNew, IDimsDown, "ConsensusDownsampled.avi")
+            return sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew)
+        else:
+            print('X proj shape:',X_proj.shape,'X shape:',XOrig.shape)
+            return getReorderedConsensusVideo(X_proj, IDims, Mu_orig, VT_orig, dim, theta, doPlot, Verbose, lookAtVotes = False)
 
-def get_out_filename(base_filename, do_simple, is_weighted, is_net_feat, pyr_level=0, layer=0):
-    filename = str(base_filename)
+def get_out_fileprefix(base_filename, inputfilename, do_simple, is_weighted, \
+                        is_net_feat, pyr_level=0, layer=0):
+    s = inputfilename.split("/")[-1]
+    s = s.split(".")[0]
+    filename = "Results/"+s+"-"+str(base_filename)+'-'
     filename = filename+'-simple' if do_simple else filename+'-median'
     filename = filename+'-weighted' if is_weighted else filename+'-unweighted'
     filename = filename+'-net-'+str(layer) if is_net_feat else filename+'-img-'+str(pyr_level)
-    return filename+'.avi'
+    return filename
 
 if __name__ == '__main__':
     from SyntheticVideos import getCircleRotatingVideo
+    print("weighted_laplacian = ", opt.weighted_laplacian)
     I, I_feat, IDims = loadVideoResNetFeats(opt.filename,opt.net_depth) if opt.net_feat else loadImageIOVideo(opt.filename,pyr_level=opt.pyr_level)
     print('I shape:',I.shape,'I feat shape:',I_feat.shape)
     #(I, IDims) = getCircleRotatingVideo()
     #saveVideo(I, IDims, "circle.avi")
-    XNew = reorderVideo(I, I_feat, derivWin = 0, Weighted = opt.weighted_laplacian, doSimple = (not opt.median_reorder), doPlot = False, Verbose = True)
-    saveVideo(XNew, IDims, get_out_filename('reordered', (not opt.median_reorder), opt.weighted_laplacian, opt.net_feat, opt.pyr_level, opt.net_depth))
-    #saveFrames(XNew, IDims)
+    fileprefix = get_out_fileprefix('reordered', opt.filename, (not opt.median_reorder), opt.weighted_laplacian, opt.net_feat, opt.pyr_level, opt.net_depth)
+    XNew = reorderVideo(I, I_feat, IDims, derivWin = 2, Weighted = opt.weighted_laplacian, \
+                        doSimple = (not opt.median_reorder), doPlot = opt.doPlot, Verbose = True, \
+                        doImageAnalogies = opt.image_analogies, fileprefix = fileprefix)
+    saveVideo(XNew, IDims, fileprefix+".avi")
+
+if __name__ == '__main__2':
+    I, I_feat, IDims = loadImageIOVideo('jumpingjacks2menlowres.ogg')
+    IDown, IDimsDown = downsampleVideo(I, IDims, 0.25)
+    saveVideo(IDown, IDimsDown, "downsampled.avi")
