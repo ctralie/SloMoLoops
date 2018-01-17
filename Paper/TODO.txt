@@ -1,8 +1,9 @@
 
-*Write methods for Laplacian, TDA, cycle reordering
+*Finish filling in method section for Laplacian, TDA, cycle reordering
 *Figure showing fundamental frequency and circular coordinates in video
 *Robustness experiments
 *Summarizing video results
+*Image analogies?
 
 Finished:
 *Sliding window definitions

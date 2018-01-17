@@ -78,11 +78,7 @@ Once we have extracted a phase for each window, we use this information to reord
 
 
 \section{Releated Work}
-Our technique unifies many disparate ideas that have appeared before in different contexts, in addition to the references we mentioned in the introduction.  Sliding window embeddings, or ``delay reconstructions,'' have found a diverse array of applications in activity recognition \cite{frank2010activity,venkataraman2016shape}, gene expression data \cite{perea2015sw1pers}, EEG analysis \cite{stam2005nonlinear, plesnik2014detection}, audio and music analysis \cite{herzel1994analysis,serra2009cross,bello2011measuring,traliemoebius}, video analysis \cite{schodl2000video, tralie2017quasi}, and motion capture analysis \cite{venkataraman2016shape}.
-
-The graph Laplacian has been used to re-arrange images around a loop as a pre-processing step for structure from motion \cite{averbuch2015ringit}, and vector diffusion maps have been used to re-order the frames of microscope images a developing embryo \cite{dsilva2015diffusionvecordering}.  A different topological approach with cohomology circular coordinates\cite{de2011persistent} was used to parameterize a sliding window embedding of the Lorenz attractor \cite{de2012topological} and periodic activites in motion capture data \cite{vejdemo2015cohomological}.  Neural networks have also been trained to find circular coordinates \cite{levy2015live,anafi2017cyclops}, though this is no longer unsupervised.
-
-There has also been some related work on sliding window embeddings to synthesize ``video textures,'' or videos that repeat dynamics indefinitely \cite{schodl2000video}, and there has been work synthesizing seamless video loops by clustering pixels into different periods and adjusting them to loop through a common period \cite{Liao2013VideoLoops,Liao2015VideoLoops}.
+Our technique unifies many disparate ideas that have appeared before in different contexts, in addition to the references we mentioned in the introduction.  Sliding window embeddings, or ``delay reconstructions,'' have found a diverse array of applications in activity recognition \cite{frank2010activity,venkataraman2016shape}, gene expression data \cite{perea2015sw1pers}, EEG analysis \cite{stam2005nonlinear, plesnik2014detection}, audio and music analysis \cite{herzel1994analysis,serra2009cross,bello2011measuring,traliemoebius}, video analysis \cite{schodl2000video, tralie2017quasi}, and motion capture analysis \cite{venkataraman2016shape}.  All of these works focus on analysis rather than synthesis, as we do, but there has been work using sliding window embeddings to synthesize ``video textures,'' or videos that repeat dynamics indefinitely \cite{schodl2000video}, which are similar in spirit to our infinitely looping periodic representatives.  The graph Laplacian, on the other hand, has been used to re-arrange images around a loop as a pre-processing step for structure from motion \cite{averbuch2015ringit}, and vector diffusion maps have been used to re-order the frames of microscope images a developing embryo around a loop \cite{dsilva2015diffusionvecordering}.  A different topological approach with cohomology circular coordinates\cite{de2011persistent} was used to parameterize a sliding window embedding of the Lorenz attractor \cite{de2012topological} and periodic activites in motion capture data \cite{vejdemo2015cohomological}.  Neural networks have also been trained to find circular coordinates \cite{levy2015live,anafi2017cyclops}.  Finally, perhaps the most related to our goal is work synthesizing seamless video loops by clustering pixels into different periods and adjusting them to loop through a common period \cite{Liao2013VideoLoops,Liao2015VideoLoops}.  TODO: talk about applications of TDA?
 
 
 
@@ -90,14 +86,33 @@ There has also been some related work on sliding window embeddings to synthesize
 \label{sec:methods}
 
 \begin{algorithm}[t]
+  \caption{Sliding Window Video Loops}\label{alg:videoreordering}
+  \begin{algorithmic}[1]
+    \Procedure{ReorderVideo}{$X$, $L$, weighted, median} \\
+    \Comment{$X$ is a $W \times H$ video $X$ with $N$ frames, an $N \times 3WH$ matrix}
+    \State ($\theta, d) \gets$ CIRCCOORDS($X, L$)
+    \State Perform SVD $X = USV^T$, $\hat{X} \gets US \in \mathbb{R}^{N \times (N-1)}$
+    \State $\hat{Y} \gets SW_d[\hat{X}[n]] \in \mathbb{R}^{M \times (N-1)d}$, $M = N-d+1$
+    \If {median}
+        \State Order $\hat{Y}$ by $\theta$, line up each window in time, and linearly interpolate coordinates of $\hat{Y}$
+        \State Do median consensus on aligned pixels of $\hat{Y}V^T$ \label{algline:medianconsensus}
+    \Else
+        \State Order first frames in each window by $\theta$
+    \EndIf
+    \EndProcedure
+  \end{algorithmic}
+\end{algorithm}
+
+
+\begin{algorithm}[t]
     \caption{Laplacian Circular Coordinates}
     \begin{algorithmic}[1]
     \Procedure{CircCoords}{$X$, $L$}
     \State $\hat{X} \gets $ image pyramid level $L$ of $X$
-    \State Perform SVD $\hat{X} = USV^T$, $Y \gets US \in \mathbb{N \times N}$
-    \State $y \gets$ 1D ISOMAP($Y$)
-    \State $d \gets$ fundamental period estimate of $y$
-    \State $Z \gets SW_{d}[Y[n]] \in \mathbb{R}^{M \times Nd}$, $M = N-d+1$
+    \State Perform SVD $\hat{X} = USV^T$, $Y \gets US \in \mathbb{R}^{N \times (N-1)}$
+    \State $y \gets$ 1D ISOMAP($Y$) \cite{tenenbaum2000global}
+    \State $d \gets$ fundamental period estimate of $y$ \cite{Mcleod05asmarter}
+    \State $Z \gets SW_{d}[Y[n]] \in \mathbb{R}^{M \times (N-1)d}$, $M = N-d+1$
 
     \State $I \gets dgm_1[Z] = ((b_1, d_1), ... (b_k, d_k))$
     \State $i \gets \argmax_{i}[d_i - b_i]$, $\sigma \gets b_i + \frac{1}{2}(d_i - b_i)$
@@ -115,25 +130,9 @@ There has also been some related work on sliding window embeddings to synthesize
   \end{algorithmic}
 \end{algorithm}
 
-\begin{algorithm}[t]
-  \caption{Sliding Window Video Loops}\label{alg:videoreordering}
-  \begin{algorithmic}[1]
-    \Procedure{ReorderVideo}{$X$, $L$, weighted, median} \\
-    \Comment{$X$ is a $W \times H$ video $X$ with $N$ frames, an $N \times 3WH$ matrix}
-    \State ($\theta, d) \gets$ CIRCCOORDS($X, L$)
-    \State Perform SVD $X = USV^T$, $\hat{X} \gets US$
-    \State $\hat{Y} \gets SW_d[\hat{X}[n]] \in \mathbb{R}^{M \times Nd}$, $M = N-d+1$
-    \If {median}
-        \State Order $\hat{Y}$ by $\theta$, line up each window in time, and linearly interpolate coordinates of $\hat{Y}$
-        \State Do median consensus on aligned pixels of $\hat{Y}V^T$ \label{algline:medianconsensus}
-    \Else
-        \State Order first frames in each window by $\theta$
-    \EndIf
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
 
-We now describe our algorithm in several stages.  Throughout our discussion, we assume we are dealing with 3 channel color videos.  For a frame resolution of $W \times H$, each frame can be thought of as a Euclidean vector in $\mathbb{R}^{W \times H \times 3}$.  Algorithm~\ref{alg:videoreordering} shows the full algorithm.
+
+We now describe our algorithm in several stages.  Throughout our discussion, we assume we are dealing with 3 channel color videos.  For a frame resolution of $W \times H$, each frame can be thought of as a Euclidean vector in $\mathbb{R}^{W \times H \times 3}$.  Algorithm~\ref{alg:videoreordering} shows the full details of our method in pseudocode.
 
 \subsection{Sliding Window Embeddings}
 \label{sec:slidingwindow}
@@ -144,14 +143,12 @@ Given a $W \times H$ video $X(t) \in \mathbb{R}^{3WH}$ indexed by time, the slid
 SW_{d, \tau}[X(t)] = \left[ \begin{array}{c} X(t) \\ X(t + \tau) \\ \vdots \\ X(t + (d-1)\tau)  \in \mathbb{R}^{3WHd} \end{array} \right]
 \end{equation}
 
-where $\tau$ is a step size and $d$ is the dimension of the embedding.  In this work, we fix $\tau = 1$ for simplicity and drop $\tau$ in the subscript, and we also sample times $t$ only at integer frame indices.  In theory, a sliding window of dimension $2m+1$ of a single generic observation function of a dynamical system of intrinsic dimension $m$ is a topological embedding of the original state space \cite{takens1981detecting}.
-
-Talk about fundamental frequency estimation \cite{Mcleod05asmarter}
-
-
+where $\tau$ is a step size and $d$ is the dimension of the embedding.  In this work, we fix $\tau = 1$ for simplicity and drop $\tau$ in the subscript, and we also sample times $t$ only at integer frame indices.  As shown by Takens \cite{takens1981detecting}, a sliding window of dimension $d = 2m+1$ of even a single generic observation function (time series) of a dynamical system of intrinsic dimension $m$ is sufficient to reconstruct a topological embedding of the underlying trajectory in the original state space.  For periodic signals, this state space is a torus, and $d$ should be twice the number of harmonics present to injectively reconstruct loops on that torus \cite{perea2015sliding}.  The same is true of videos in general \cite{tralie2017quasi}.  Furthermore, the sliding window length $(d-1) \tau$, or simply $d-1$ in our case, maximizes the roundness of the embeddings when $d-1 = k T$ for some integer $k$, where $T$ is the fundamental period.  Since we use topological data analysis (TDA) to find the scale of the loop, and since TDA measures roundness, it is important that we tune our window size to be an integer multiple of the period.  To do this, we perform 1D ISOMAP \cite{tenenbaum2000global} on the original frames of the video to generate a 1D ``surrogate signal,'' and we perform an autocorrelation-based fundamental frequency estimation \cite{Mcleod05asmarter} on this signal to estimate the period and, hence, the appropriate $d$.  This is quite similar to the diffusion maps + autocorrelation approach in \cite{tralie2017quasi} for analyzing periodic videos.  This estimation often returns multiples of the fundamental period, which is fine for our purposes.
 
 \subsection{Laplacian Eigenmaps And Persistent Homology}
 \label{sec:laplacian}
+
+
 
 which means the first two nonzero eigenvectors should be a sine and cosine, or orthogonal linear combinations therein.  When plotted against each other, they make an approximate circle, and the arctangent of the two eigenvector coordinates at every window can be used to determine the {\em phase} of the corresponding window in the periodic signal.  The first sample of each window can then be re-sorted by phase.
 
