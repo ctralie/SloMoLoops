@@ -89,27 +89,46 @@ There has also been some related work on sliding window embeddings to synthesize
 \section{Methods}
 \label{sec:methods}
 
-
 \begin{algorithm}[t]
-  \caption{Sliding Window Video Loops}\label{alg:videoreordering}
-  \begin{algorithmic}[1]
-    \Procedure{ReorderVideo}{$X$, weighted, median} \\
-    \Comment{$X$ is a $W \times H$ video $X$ with $N$ frames}
-    \State $\hat{X} \gets$ 1D ISOMAP(X)
-    \State $d \gets$ fundamental period estimate of $\hat{X}$
-    \State $Y \gets SW_{d}[X[n]] \in \mathbb{R}^{WHd}$, with $M = N-d+1$ frames
-    \State Perform SVD $Y = USV^T$, $\hat{Y} \gets V^TY$
-    \State $I \gets dgm_1[\hat{Y}] = ((b_1, d_1), ... (b_k, d_k))$
+    \caption{Laplacian Circular Coordinates}
+    \begin{algorithmic}[1]
+    \Procedure{CircCoords}{$X$, $L$}
+    \State $\hat{X} \gets $ image pyramid level $L$ of $X$
+    \State Perform SVD $\hat{X} = USV^T$, $Y \gets US \in \mathbb{N \times N}$
+    \State $y \gets$ 1D ISOMAP($Y$)
+    \State $d \gets$ fundamental period estimate of $y$
+    \State $Z \gets SW_{d}[Y[n]] \in \mathbb{R}^{M \times Nd}$, $M = N-d+1$
+
+    \State $I \gets dgm_1[Z] = ((b_1, d_1), ... (b_k, d_k))$
     \State $i \gets \argmax_{i}[d_i - b_i]$, $\sigma \gets b_i + \frac{1}{2}(d_i - b_i)$
-    \State $d_{ij} \gets ||\hat{Y}_i - \hat{Y}_j||_2$
+    \State $d_{ij} \gets ||Z_i - Z_j||_2$
     \If {weighted}
         \State $A_{ij} \gets e^{-d_{ij}^2/\sigma}$
     \Else
         \State $A_{ij} \gets \left\{ \begin{array}{cc} 1 & d_{ij} \leq \sigma \\ 0 & \text{otherwise} \end{array} \right\}$
     \EndIf
     \State $A_{ii} \gets 0, D_{ii} \gets \sum_{j=1}^M A_{ij}, D_{i, j \neq i} \gets 0$, $L \gets D - A$
-    \State $v_1, v_2 \gets $ adjacent eigenvectors of $L$ with fewest zero-crossings
-    \State $\theta \gets \cos^{-1}(v_2/v_1)$
+    \State $v_1, v_2 \gets $ adjacent eigenvectors of $L$ with fewest zcs
+    \State $\theta \gets \cos^{-1}(v_2/v_1)$\\
+    \Return ($\theta$, d)
+    \EndProcedure
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[t]
+  \caption{Sliding Window Video Loops}\label{alg:videoreordering}
+  \begin{algorithmic}[1]
+    \Procedure{ReorderVideo}{$X$, $L$, weighted, median} \\
+    \Comment{$X$ is a $W \times H$ video $X$ with $N$ frames, an $N \times 3WH$ matrix}
+    \State ($\theta, d) \gets$ CIRCCOORDS($X, L$)
+    \State Perform SVD $X = USV^T$, $\hat{X} \gets US$
+    \State $\hat{Y} \gets SW_d[\hat{X}[n]] \in \mathbb{R}^{M \times Nd}$, $M = N-d+1$
+    \If {median}
+        \State Order $\hat{Y}$ by $\theta$, line up each window in time, and linearly interpolate coordinates of $\hat{Y}$
+        \State Do median consensus on aligned pixels of $\hat{Y}V^T$ \label{algline:medianconsensus}
+    \Else
+        \State Order first frames in each window by $\theta$
+    \EndIf
     \EndProcedure
   \end{algorithmic}
 \end{algorithm}
@@ -125,7 +144,8 @@ Given a $W \times H$ video $X(t) \in \mathbb{R}^{3WH}$ indexed by time, the slid
 SW_{d, \tau}[X(t)] = \left[ \begin{array}{c} X(t) \\ X(t + \tau) \\ \vdots \\ X(t + (d-1)\tau)  \in \mathbb{R}^{3WHd} \end{array} \right]
 \end{equation}
 
-where $\tau$ is a step size and $d$ is the dimension of the embedding.  In this work, we fix $\tau = 1$ for simplicity and drop $\tau$ in the subscript, and we also sample times $t$ only at integer frame indices.  In theory, a sliding window embedding of a single generic observation function of a dynamical system of intrinsic dimension $m$ can be reconstructed \cite{takens1981detecting}.
+where $\tau$ is a step size and $d$ is the dimension of the embedding.  In this work, we fix $\tau = 1$ for simplicity and drop $\tau$ in the subscript, and we also sample times $t$ only at integer frame indices.  In theory, a sliding window of dimension $2m+1$ of a single generic observation function of a dynamical system of intrinsic dimension $m$ is a topological embedding of the original state space \cite{takens1981detecting}.
+
 Talk about fundamental frequency estimation \cite{Mcleod05asmarter}
 
 
@@ -149,6 +169,9 @@ Talk about autotuning with peristent homology, mention that it's the opposite of
 
 Figure~\ref{fig:XTSlice} shows the difference between a simple reordering and a median consensus reordering.  Due to natural variation from cycle to cycle, the simple reordering has many temporal discontinuities when interleaving these cycles.  By contrast, the median voting is clean, and it has the added benefit of removing nonperiodic background components.
 
+Advantage of Eulerian is that everything is linear (can use SVD to compress)
+
+Interpolated windows can be projected back to pixel space one by one to save memory (Line~\ref{algline:medianconsensus} of Algorithm~\ref{alg:videoreordering})
 
 \subsection{Sharpening Postprocessing}
 
