@@ -1,9 +1,11 @@
-*Make concept figure
-*Write background for Laplacian, TDA, video loops
+
+*Write methods for Laplacian, TDA, cycle reordering
 *Sliding window definitions
 *Write algorithm pseudocode
 *Figure showing fundamental frequency and circular coordinates in video
-*Figure showing XT slice with and without median consensus
 
 
 Finished:
+*Make concept figure
+*Figure showing XT slice with and without median consensus
+*Appropriate amount of background interleaved in the document

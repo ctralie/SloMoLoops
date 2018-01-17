@@ -2,13 +2,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
 import scipy.interpolate as interp
+from VideoTools import *
 from VideoReordering import *
 from Laplacian import *
 from CSMSSMTools import *
 from FundamentalFreq import *
 from sklearn.decomposition import PCA
 from ripser import ripser
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+def makeColorbar(dim1 = 1, dim2 = 3, k = 3):
+    plt.subplot(dim1, dim2, k)
+    ax = plt.gca()
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad = 0.05)
+    plt.colorbar(cax = cax)
 
 def drawLineColored(idx, x, C, linewidth = 1):
     plt.hold(True)
@@ -67,16 +75,16 @@ def ReorderingExample1D(seed):
     I = Is[1]
     thresh = np.argmax(I[:, 1] - I[:, 0])
     thresh = np.mean(I[thresh, :])
-    
+
     #Do both weighted and unweighted Laplacian
     resw = getLapCircularCoordinatesSigma(D, thresh, NEigs = 10)
     resu = getLapCircularCoordinatesThresh(D, thresh, NEigs = 10)
     ress = {'Weighted':resw, 'Unweighted':resu}
 
     fres = 3
-    fig = plt.figure(figsize=(fres*5, fres*3))
+    fig = plt.figure(figsize=(fres*4, fres*3.2))
     ylims = np.array([-3.5, 3.5])
-    plt.subplot(3, 5, 1)
+    plt.subplot2grid((3, 4), (0, 0), colspan = 2)
     drawLineColored(np.arange(len(x)), x, C[xidx, :])
     plt.plot([0, 0], ylims*0.9, 'w')
     plt.plot([dim-1]*2, ylims*0.9, 'w')
@@ -86,17 +94,17 @@ def ReorderingExample1D(seed):
     plotbgcolor = (0.15, 0.15, 0.15)
     ax.set_axis_bgcolor(plotbgcolor)
     plt.ylim(ylims)
-    plt.title("Original Signal, Sliding Window d = %i"%dim)
+    plt.title("$f(t) = \\cos(t 2\\pi/12) + \\cos(t 2\\pi/4) + \\cos(r 10\\pi/12) + 0.6n_t$")
     plt.xlabel("t")
 
-    plt.subplot(3, 5, 2)
+    plt.subplot(3, 4, 5)
     plt.imshow(D, cmap = 'afmhot', interpolation = 'nearest')
     plt.xlabel("Window Index")
     plt.ylabel("Window Index")
-    plt.colorbar()
-    plt.title("Sliding Window SSM")
+    plt.title("$SW_{%i}[f(t)]$ Distance Matrix"%dim)
+    makeColorbar(3, 4, 5)
 
-    plt.subplot(3, 5, 3)
+    plt.subplot(3, 4, 6)
     lims = [np.min(I), np.max(I)]
     plt.plot(lims, lims, 'k')
     plt.scatter(I[:, 0], I[:, 1], 20)
@@ -123,30 +131,32 @@ def ReorderingExample1D(seed):
         #Do denoising
         (YVotes, y, winidx) = getReorderedConsensus1D(X, X.shape[0], theta, doPlot = doPlot)
 
-        plt.subplot(3, 5, 4+count)
+        plt.subplot(3, 4, 3+count)
         plt.title("%s Adjacency Matrix"%(resType))
         plt.imshow(np.log(A + 1e-10), cmap='gray', interpolation = 'nearest')
         plt.xlabel("Window Index")
         plt.ylabel("Window Index")
         #plt.imshow(A, cmap = 'gray', interpolation = 'nearest')
 
-        plt.subplot(3, 5, 5*(1+count)+1)
+        plt.subplot(3, 4, 7+count)
         plt.scatter(v[:, 1], v[:, 2], 20, c=C, edgecolor = 'none')
         plt.xlabel("Eigenvector %i"%idxs[0])
         plt.ylabel("Eigenvector %i"%idxs[1])
-        plt.title("%s Laplacian Eigenmap"%resType)
+        plt.title("%s Laplacian Map"%resType)
         ax = plt.gca()
         ax.set_axis_bgcolor(plotbgcolor)
         ax.set_xticks([])
         ax.set_yticks([])
 
-        plt.subplot(3, 5, 5*(1+count)+2)
+        if resType == 'Unweighted':
+            continue
+        plt.subplot(3, 4, 9)
         plt.plot(theta)
-        plt.title("Circular Coordinates")
+        plt.title("%s Circular Coords"%resType)
         plt.xlabel("Window Index")
         plt.ylabel("$\\theta$")
 
-        plt.subplot(3, 5, 5*(1+count)+3)
+        plt.subplot(3, 4, 10)
         drawLineColored(np.arange(len(xresort)), xresort, C[ridx], linewidth=1.5)
         #plt.plot(xgt, linestyle='--', color=[0.8]*3, linewidth=4)
         ax = plt.gca()
@@ -155,7 +165,7 @@ def ReorderingExample1D(seed):
         plt.title("Reordered Signal\nMSE = %.3g"%MSE(xresort, xgt))
         plt.xlabel("t'")
 
-        plt.subplot(3, 5, 5*(1+count)+4)
+        plt.subplot(3, 4, 11)
         winidx2orig = 0*winidx
         winidx2orig[winidx] = np.arange(len(winidx))
         for i in range(YVotes.shape[0]):
@@ -165,15 +175,65 @@ def ReorderingExample1D(seed):
         plt.title("Interpolated Window Votes\nAverage MSE = %.3g"%mse)
         plt.xlabel("t'")
 
-        plt.subplot(3, 5, 5*(1+count)+5)
+        plt.subplot(3, 4, 12)
         plt.plot(y, linewidth=4)
         plt.plot(xgt, linestyle='--')
         plt.ylim(ylims)
-        plt.title("Spline Consensus reordering\nMSE = %.3g"%MSE(y, xgt))
+        plt.title("Median Consensus\nMSE = %.3g"%MSE(y, xgt))
         plt.xlabel("t'")
+    plt.tight_layout()
+    plt.savefig("Paper/Figures/1DExample.svg", bbox_inches = 'tight')
+
+def getAllImageSlices(I, IDims, xlims, ylims, line):
+    XT = []
+    for i in range(I.shape[0]):
+        F = np.reshape(I[i, :], IDims)
+        F = F[ylims[0]:ylims[1], xlims[0]:xlims[1], :]
+        XT.append(F[line, :, :])
+    return np.array(XT)
+
+def makeXTSliceSimpleAndMedian():
+    plt.figure(figsize=(6, 5))
+    filename = 'Results/jumpingjacks2menlowres-reordered--%s-unweighted-img-2.avi'
+    [IOrig, _, IDims] = loadImageIOVideo('jumpingjacks2menlowres.ogg')
+    xlims = [55, 348]
+    ylims = [0, 200]
+    FRef = np.reshape(IOrig[0, :], IDims)
+    FRef = FRef[ylims[0]:ylims[1], xlims[0]:xlims[1], :]
+
+    line = 50
+    FOrig = getAllImageSlices(IOrig, IDims, xlims, ylims, line)
+    [ISimple, _, _] = loadImageIOVideo(filename%"simple")
+    FSimple = getAllImageSlices(ISimple, IDims, xlims, ylims, line)
+    [IMedian, _, _] = loadImageIOVideo(filename%"median")
+    FMedian = getAllImageSlices(IMedian, IDims, xlims, ylims, line)
+
+    plt.subplot(221)
+    plt.imshow(FRef)
+    plt.plot([0, FRef.shape[1]], [line, line], color = [0.7, 0, 0.7])
+    plt.axis('equal')
+    plt.axis('off')
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.title("Original Frame")
+    plt.subplot(222)
+    plt.imshow(FOrig)
+    plt.axis('equal')
+    plt.axis('off')
+    plt.title("Original Video")
+    plt.subplot(223)
+    plt.imshow(FSimple)
+    plt.axis('equal')
+    plt.axis('off')
+    plt.title("Reordered Simple")
+    plt.subplot(224)
+    plt.imshow(FMedian)
+    plt.axis('equal')
+    plt.axis('off')
+    plt.title("Reordered Median")
+    plt.savefig("Paper/Figures/XTSlice.svg", bbox_inches = 'tight')
+
 
 if __name__ == '__main__':
-    seed = 0
-    plt.clf()
-    ReorderingExample1D(seed)
-    plt.savefig("Paper/Figures/1DExample.svg", bbox_inches = 'tight')
+    #ReorderingExample1D(0)
+    makeXTSliceSimpleAndMedian()
