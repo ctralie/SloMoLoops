@@ -269,6 +269,6 @@ if __name__ == '__main__':
     print('I shape:',I.shape,'I feat shape:',I_feat.shape)
     #(I, IDims) = getCircleRotatingVideo()
     #saveVideo(I, IDims, "circle.avi")
-    XNew = reorderVideo(I, I_feat, derivWin = 2, Weighted = opt.weighted_laplacian, doSimple = (not opt.median_reorder), doPlot = False, Verbose = True)
+    XNew = reorderVideo(I, I_feat, derivWin = 0, Weighted = opt.weighted_laplacian, doSimple = (not opt.median_reorder), doPlot = False, Verbose = True)
     saveVideo(XNew, IDims, get_out_filename('reordered', (not opt.median_reorder), opt.weighted_laplacian, opt.net_feat, opt.pyr_level, opt.net_depth))
     #saveFrames(XNew, IDims)
