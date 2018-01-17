@@ -91,8 +91,8 @@ Our technique unifies many disparate ideas that have appeared before in differen
     \Procedure{ReorderVideo}{$X$, $L$, weighted, median} \\
     \Comment{$X$ is a $W \times H$ video $X$ with $N$ frames, an $N \times 3WH$ matrix}
     \State ($\theta, d) \gets$ CIRCCOORDS($X, L$)
-    \State Perform SVD $X = USV^T$, $\hat{X} \gets US \in \mathbb{R}^{N \times (N-1)}$
-    \State $\hat{Y} \gets SW_d[\hat{X}[n]] \in \mathbb{R}^{M \times (N-1)d}$, $M = N-d+1$
+    \State Perform SVD $X = USV^T$, $\hat{X} \gets US \in \mathbb{R}^{N \times N}$
+    \State $\hat{Y} \gets SW_d[\hat{X}[n]] \in \mathbb{R}^{M \times N \times d}$, $M = N-d+1$
     \If {median}
         \State Order $\hat{Y}$ by $\theta$, line up each window in time, and linearly interpolate coordinates of $\hat{Y}$
         \State Do median consensus on aligned pixels of $\hat{Y}V^T$ \label{algline:medianconsensus}
@@ -109,10 +109,10 @@ Our technique unifies many disparate ideas that have appeared before in differen
     \begin{algorithmic}[1]
     \Procedure{CircCoords}{$X$, $L$}
     \State $\hat{X} \gets $ image pyramid level $L$ of $X$
-    \State Perform SVD $\hat{X} = USV^T$, $Y \gets US \in \mathbb{R}^{N \times (N-1)}$
+    \State Perform SVD $\hat{X} = USV^T$, $Y \gets US \in \mathbb{R}^{N \times N}$
     \State $y \gets$ 1D ISOMAP($Y$) \cite{tenenbaum2000global}
     \State $d \gets$ fundamental period estimate of $y$ \cite{Mcleod05asmarter}
-    \State $Z \gets SW_{d}[Y[n]] \in \mathbb{R}^{M \times (N-1)d}$, $M = N-d+1$
+    \State $Z \gets SW_{d}[Y[n]] \in \mathbb{R}^{M \times N \times d}$, $M = N-d+1$
 
     \State $I \gets dgm_1[Z] = ((b_1, d_1), ... (b_k, d_k))$
     \State $i \gets \argmax_{i}[d_i - b_i]$, $\sigma \gets b_i + \frac{1}{2}(d_i - b_i)$
@@ -132,7 +132,7 @@ Our technique unifies many disparate ideas that have appeared before in differen
 
 
 
-We now describe our algorithm in several stages.  Throughout our discussion, we assume we are dealing with 3 channel color videos.  For a frame resolution of $W \times H$, each frame can be thought of as a Euclidean vector in $\mathbb{R}^{W \times H \times 3}$.  Algorithm~\ref{alg:videoreordering} shows the full details of our method in pseudocode.
+We now describe our algorithm in several stages.  Throughout our discussion, we assume we are dealing with 3 channel color videos.  For a frame resolution of $W \times H$, each frame can be thought of as a Euclidean vector in $\mathbb{R}^{W \times H \times 3}$.  For a video with $N$ frames, we flatten each frame to a 1D vector and stack them row wise along an $N \times 3WH$ matrix $X$.  Whenever we perform a linear operation on all of the pixels at once, we can use the SVD $X = USV^T$ to reduce memory and computational costs by working with $US$ in place of $X$, which is in $N$ dimensions instead of $3WH \gg N$ (similar processing was done in \cite{turk1991eigenfaces} and \cite{tralie2017quasi}).  The only nonlinear operation is the median operation (Section~\ref{sec:cyclereordering}), and we project back into pixel space using $V^T$ before taking the median. Algorithm~\ref{alg:videoreordering} shows the full details of our method in pseudocode.
 
 \subsection{Sliding Window Embeddings}
 \label{sec:slidingwindow}
@@ -140,7 +140,7 @@ We now describe our algorithm in several stages.  Throughout our discussion, we 
 Given a $W \times H$ video $X(t) \in \mathbb{R}^{3WH}$ indexed by time, the sliding window video embedding \cite{cao1998dynamics,traliehigh,tralie2017quasi} is defined as
 
 \begin{equation}
-SW_{d, \tau}[X(t)] = \left[ \begin{array}{c} X(t) \\ X(t + \tau) \\ \vdots \\ X(t + (d-1)\tau)  \in \mathbb{R}^{3WHd} \end{array} \right]
+SW_{d, \tau}[X(t)] = \left[ \begin{array}{c} X(t) \\ X(t + \tau) \\ \vdots \\ X(t + (d-1)\tau)  \end{array} \right] \in \mathbb{R}^{3WHd}
 \end{equation}
 
 where $\tau$ is a step size and $d$ is the dimension of the embedding.  In this work, we fix $\tau = 1$ for simplicity and drop $\tau$ in the subscript, and we also sample times $t$ only at integer frame indices.  As shown by Takens \cite{takens1981detecting}, a sliding window of dimension $d = 2m+1$ of even a single generic observation function (time series) of a dynamical system of intrinsic dimension $m$ is sufficient to reconstruct a topological embedding of the underlying trajectory in the original state space.  For periodic signals, this state space is a torus, and $d$ should be twice the number of harmonics present to injectively reconstruct loops on that torus \cite{perea2015sliding}.  The same is true of videos in general \cite{tralie2017quasi}.  Furthermore, the sliding window length $(d-1) \tau$, or simply $d-1$ in our case, maximizes the roundness of the embeddings when $d-1 = k T$ for some integer $k$, where $T$ is the fundamental period.  Since we use topological data analysis (TDA) to find the scale of the loop, and since TDA measures roundness, it is important that we tune our window size to be an integer multiple of the period.  To do this, we perform 1D ISOMAP \cite{tenenbaum2000global} on the original frames of the video to generate a 1D ``surrogate signal,'' and we perform an autocorrelation-based fundamental frequency estimation \cite{Mcleod05asmarter} on this signal to estimate the period and, hence, the appropriate $d$.  This is quite similar to the diffusion maps + autocorrelation approach in \cite{tralie2017quasi} for analyzing periodic videos.  This estimation often returns multiples of the fundamental period, which is fine for our purposes.
@@ -154,7 +154,7 @@ which means the first two nonzero eigenvectors should be a sine and cosine, or o
 
 Talk about autotuning with peristent homology, mention that it's the opposite of the approach in \cite{bendich2011improving}.
 
-\subsection{Cycle Reordering}
+\subsection{Cycle Reordering And Median Voting}
 \label{sec:cyclereordering}
 
 \begin{figure}[h!]
