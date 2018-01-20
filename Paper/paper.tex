@@ -16,7 +16,7 @@
 \newcommand{\argmax}{\operatornamewithlimits{argmax}}
 
 
-\title{Synthesizing Slow Motion Periodic Videos via Circular Coordinate Reshuffling And Voting}
+\title{Eulerian Synthesis of Slow Motion Periodic Videos}
 
 %
 % Single address.
@@ -69,8 +69,7 @@ One, two, three, four, five
 \label{fig:ConceptFigure}
 \end{figure}
 
-In this work, we aim to find slow motion representatives for videos which have periodic motion.  The result should loop seamlessly and to occur at a higher framerate than the captured framerate, allowing a smooth, high detail view of a single cycle of the motion.  In the absence of a high framerate camera, recent work has shown it is possible to boost the framerate of an ordinary camera by inserting a coded aperture in front of the lens \cite{llull2013coded}.  By contrast, in our work, we take a purely signal processing approach which avoids any specialized hardware.
-
+Repetitive, periodic motions are ubiquitous in our world, such as animal locomotion (walking/flapping/slithering/swimming), mechanical motions (wheels spinning, pistons oscillating), biological rhythms (heartbeat, breathing), musical rhythms (drumming, feet tapping), etc.  In this work, we consider videos of periodic motion.  One avenue of interest is to analyze these videos in fine detail, such as for characterizing subtle progressions of blood flow in the face during a heartbeat for medical diagnostic purposes.  It may also be important to understand and visualize variations from cycle to cycle, such as in a repetitive automated action on an assembly line, where too much variation could indicate the onset of failure, or in athletic activities for optimizing performance.  
 
 Our approach is {\em Eulerian}; that is, we process the video pixel by pixel with no tracking.  Unlike Fourier-based Eulerian motion video processing tools (\cite{wu2012eulerian, wadhwa2013phase}), however, we take a {\em geometric} approach by quantifying {\em sliding window embeddings} of our videos (Section~\ref{sec:slidingwindow}).  Sliding window embeddings of periodic time series form samples of a topological loop \cite{perea2015sliding}, as do generalized multivariate sliding windows on periodic video data \cite{traliehigh, tralie2017quasi}.  This implies that, at the right scale, a nearest neighbor graph built on the sliding window point cloud should be approximately a circle graph, even if the overall extrinsic geometry is quite complicated.  Bearing this in mind, we use Laplacian eigenmaps \cite{belkin2003laplacian} of this embedding to construct maps from these point clouds to the circle, or {\em circular coordinates} (Section~\ref{sec:laplacian}).  In particular, each sliding window is assigned a phase $\phi \in [0, 2\pi]$.  To autotune the scale at which Laplacian eigenmaps are built, we use topological data analysis \cite{edelsbrunner2000topological,edelsbrunner2008persistent,edelsbrunner2010computational,carlsson2009topology,ghrist2014elementary} to automatically find the scale at which the most prominent loop in the data occurs.
 
@@ -172,7 +171,7 @@ Interpolated windows can be projected back to pixel space one by one to save mem
 
 \subsection{Sharpening Postprocessing}
 
-The results of the median recycling are smooth and qualitatively similar to the results in the ``motion denoising'' work by the authors of \cite{rubinstein2011motion} on time lapse videos, though both results tend to be slightly blurry.
+The results of the median reordering can be blurry
 
 
 \section{Experiments}
