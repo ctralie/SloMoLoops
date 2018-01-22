@@ -178,6 +178,7 @@ def loadVideoResNetFeats(path, depth=0):
         print('unknown depth?',depth)
         shallow_layers = ['conv1','bn1','relu','maxpool']
     net = models.__dict__['resnet18'](pretrained=True)
+    net.eval()
     resnet_module = net.modules().__next__()
     resnet_modules = resnet_module.named_children()
     shallow_nn = []
