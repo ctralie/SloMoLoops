@@ -54,9 +54,19 @@ def ReorderingExample1D(seed):
     x = x + 0.6*np.random.randn(len(x))
 
     doPlot = False
-    dim = int(np.round(estimateFundamentalFreq(x, shortBias = 0.0, doPlot = doPlot)[0]))
-    if doPlot:
-        plt.show()
+    res = estimateFundamentalFreq(x, shortBias = 0.0, doPlot = doPlot)
+    [maxTau, maxidx, corr] = [res['maxTau'], res['maxidx'], res['corr']]
+    plt.figure(figsize=(5, 4))
+    plt.plot(np.arange(len(corr)), corr)
+    plt.scatter(maxidx, corr[maxidx])
+    plt.scatter([maxTau], [corr[maxTau]], 100, 'r')
+    plt.xlabel("$\\tau$")
+    plt.ylabel("Normalized Correlation")
+    plt.title("Fundamental Frequency: Max $\\tau = %i$"%maxTau)
+    plt.savefig("Paper/Figures/FundamentalFreq.svg", bbox_inches = 'tight')
+    plt.clf()
+
+    dim = int(np.round(maxTau))
     print("dim = %i"%dim)
     (X, xidx) = getSlidingWindow(x, dim, 1, 1)
 
@@ -119,7 +129,7 @@ def ReorderingExample1D(seed):
 
     for count, resType in enumerate(ress):
         res = ress[resType]
-        [w, v, theta, A, idxs] = [res['w'], res['v'], res['theta'], res['A'], res['idxs']]
+        [w, v, theta, thetau, A, idxs] = [res['w'], res['v'], res['theta'], res['thetau'], res['A'], res['idxs']]
 
         tu = np.unwrap(theta)
         if tu[-1] - tu[0] < 0:
@@ -129,7 +139,7 @@ def ReorderingExample1D(seed):
         xresort = x[ridx]
 
         #Do denoising
-        (YVotes, y, winidx) = getReorderedConsensus1D(X, X.shape[0], theta, doPlot = doPlot)
+        (YVotes, y, winidx) = getReorderedConsensus1D(X, X.shape[0], thetau, doPlot = doPlot)
 
         plt.subplot(3, 4, 3+count)
         plt.title("%s Adjacency Matrix"%(resType))
@@ -235,5 +245,5 @@ def makeXTSliceSimpleAndMedian():
 
 
 if __name__ == '__main__':
-    #ReorderingExample1D(0)
-    makeXTSliceSimpleAndMedian()
+    ReorderingExample1D(0)
+    #makeXTSliceSimpleAndMedian()
