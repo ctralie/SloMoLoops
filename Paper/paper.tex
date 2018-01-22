@@ -7,8 +7,6 @@
 % --------------------------------------------------------------------------
 \documentclass{article}
 \usepackage{spconf,amsmath,amssymb,amsfonts,amsthm,graphicx}
-\usepackage{algorithm}% http://ctan.org/pkg/algorithms
-\usepackage{algpseudocode}% http://ctan.org/pkg/algorithmicx
 
 
 \graphicspath{{Figures/}}
@@ -62,13 +60,6 @@ One, two, three, four, five
 
 \section{Introduction}
 
-\begin{figure}[h!]
-\centering
-\includegraphics[width=\columnwidth]{1DExample.pdf}
-\caption{An illustration of our technique on a 1D periodic time series with additive Gaussian noise ($n_t \in \mathcal{N}(0, 1)$).  We estimate the period to be 24 (a multiple of the fundamental frequency), and perform a 24-length sliding window embedding.  From this, we use the mean of the birth and death time of the largest persistence dot (row 2, column 2) to autotune the spatial bandwidth for the graph Laplacian (upper right two figures for the weighted and unweighted Laplacian), from which we derive a map to the circle (middle, right two plots).  From this, we derive circular coordinates, which we can use to do a simple reordering (row 3 column 2) or median consensus (row 3, column 3), using interpolated votes from all windows interleaved by the coordinates (row 3, column 2). }
-\label{fig:ConceptFigure}
-\end{figure}
-
 Repetitive, periodic motions are ubiquitous in our world, such as animal locomotion (walking/flapping/slithering/swimming), mechanical motions (wheels spinning, pistons oscillating), biological rhythms (heartbeat, breathing), musical rhythms (drumming, feet tapping), etc.  In this work, we consider videos of periodic motion.  One avenue of interest is to analyze these videos in fine detail, such as for characterizing subtle progressions of blood flow in the face during a heartbeat for medical diagnostic purposes.  It may also be important to understand and visualize variations from cycle to cycle, such as in a repetitive automated action on an assembly line, where too much variation could indicate the onset of failure, or in athletic activities for optimizing performance.  
 
 Our approach is {\em Eulerian}; that is, we process the video pixel by pixel with no tracking.  Unlike Fourier-based Eulerian motion video processing tools (\cite{wu2012eulerian, wadhwa2013phase}), however, we take a {\em geometric} approach by quantifying {\em sliding window embeddings} of our videos (Section~\ref{sec:slidingwindow}).  Sliding window embeddings of periodic time series form samples of a topological loop \cite{perea2015sliding}, as do generalized multivariate sliding windows on periodic video data \cite{traliehigh, tralie2017quasi}.  This implies that, at the right scale, a nearest neighbor graph built on the sliding window point cloud should be approximately a circle graph, even if the overall extrinsic geometry is quite complicated.  Bearing this in mind, we use Laplacian eigenmaps \cite{belkin2003laplacian} of this embedding to construct maps from these point clouds to the circle, or {\em circular coordinates} (Section~\ref{sec:laplacian}).  In particular, each sliding window is assigned a phase $\phi \in [0, 2\pi]$.  To autotune the scale at which Laplacian eigenmaps are built, we use topological data analysis \cite{edelsbrunner2000topological,edelsbrunner2008persistent,edelsbrunner2010computational,carlsson2009topology,ghrist2014elementary} to automatically find the scale at which the most prominent loop in the data occurs.
@@ -84,50 +75,12 @@ Our technique unifies many disparate ideas that have appeared before in differen
 \section{Methods}
 \label{sec:methods}
 
-\begin{algorithm}[t]
-  \caption{Sliding Window Video Loops}\label{alg:videoreordering}
-  \begin{algorithmic}[1]
-    \Procedure{ReorderVideo}{$X$, $L$, weighted, median} \\
-    \Comment{$X$ is a $W \times H$ video $X$ with $N$ frames, an $N \times 3WH$ matrix}
-    \State ($\theta, d) \gets$ CIRCCOORDS($X, L$)
-    \State Perform SVD $X = USV^T$, $\hat{X} \gets US \in \mathbb{R}^{N \times N}$
-    \State $\hat{Y} \gets SW_d[\hat{X}[n]] \in \mathbb{R}^{M \times N \times d}$, $M = N-d+1$
-    \If {median}
-        \State Order $\hat{Y}$ by $\theta$, line up each window in time, and linearly interpolate coordinates of $\hat{Y}$
-        \State Do median consensus on aligned pixels of $\hat{Y}V^T$ \label{algline:medianconsensus}
-    \Else
-        \State Order first frames in each window by $\theta$
-    \EndIf
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
-
-
-\begin{algorithm}[t]
-    \caption{Laplacian Circular Coordinates}
-    \begin{algorithmic}[1]
-    \Procedure{CircCoords}{$X$, $L$}
-    \State $\hat{X} \gets $ image pyramid level $L$ of $X$
-    \State Perform SVD $\hat{X} = USV^T$, $Y \gets US \in \mathbb{R}^{N \times N}$
-    \State $y \gets$ 1D ISOMAP($Y$) \cite{tenenbaum2000global}
-    \State $d \gets$ fundamental period estimate of $y$ \cite{Mcleod05asmarter}
-    \State $Z \gets SW_{d}[Y[n]] \in \mathbb{R}^{M \times N \times d}$, $M = N-d+1$
-
-    \State $I \gets dgm_1[Z] = ((b_1, d_1), ... (b_k, d_k))$
-    \State $i \gets \argmax_{i}[d_i - b_i]$, $\sigma \gets b_i + \frac{1}{2}(d_i - b_i)$
-    \State $d_{ij} \gets ||Z_i - Z_j||_2$
-    \If {weighted}
-        \State $A_{ij} \gets e^{-d_{ij}^2/\sigma}$
-    \Else
-        \State $A_{ij} \gets \left\{ \begin{array}{cc} 1 & d_{ij} \leq \sigma \\ 0 & \text{otherwise} \end{array} \right\}$
-    \EndIf
-    \State $A_{ii} \gets 0, D_{ii} \gets \sum_{j=1}^M A_{ij}, D_{i, j \neq i} \gets 0$, $L \gets D - A$
-    \State $v_1, v_2 \gets $ adjacent eigenvectors of $L$ with fewest zcs
-    \State $\theta \gets \cos^{-1}(v_2/v_1)$\\
-    \Return ($\theta$, d)
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
+\begin{figure*}
+\centering
+\includegraphics[width=\textwidth]{BlockDiagram.pdf}
+\caption{An block diagram of our technique, illustrated by a 1D periodic time series with additive Gaussian noise ($n_t \in \mathcal{N}(0, 1)$).  We estimate the period to be 24 (a multiple of the fundamental frequency), and perform a 24-length sliding window embedding.  From this, we use the mean of the birth and death time of the largest persistence dot to autotune the scale $\sigma$ for the graph Laplacian, from which we derive circular coordinates $\sigma$, which can be used to reorder the sliding windows and use them to vote on a final slow motion template.}
+\label{fig:ConceptFigure}
+\end{figure*}
 
 
 

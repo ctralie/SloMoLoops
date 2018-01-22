@@ -124,6 +124,35 @@ def getLapCircularCoordinatesThresh(pD, thresh, NEigs = 20, doPlot = False):
     (theta, thetau) = getLapThetas(v, 1, 2)
     return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
 
+def getLapCircularCoordinatesKNN(D, Kappa, NEigs = 20, doPlot = False):
+    """
+    Get circular coordinates using a weighted laplacian 
+    :param pD: Distance matrix
+    :param Kappa: Percentage of mutual nearest neighbors
+    :param NEigs: Maximum number of eigenvectors to compute
+    :return {'w':eigenvalues, 'v':eigenvectors, 'theta':Circular coordinates,\
+            'thetau':Unwrapped circular coordinates, 'A':Adjacency matrix}
+    """
+    A = CSMToBinaryMutual(D, Kappa)
+    np.fill_diagonal(A, 0)
+    NEigs = min(NEigs, A.shape[0])
+    (w, v, L) = getLaplacianEigsDense(A, NEigs)
+    (i1, zcs) = getSlowestEigenvectorIdx(v)
+    if doPlot:
+        plt.subplot(311)
+        plt.imshow(v, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
+        plt.xlim([0, v.shape[1]])
+        plt.title("Eigenvectors")
+        plt.subplot(312)
+        plt.plot(zcs)
+        plt.title("Zero Crossings, Smallest = (%i, %i)"%(i1, i1+1))
+        plt.xlim([0, v.shape[1]])
+        plt.subplot(313)
+        plt.plot(v[:, [i1, i1+1]])
+        plt.legend(["%i"%i1, "%i"%(i1+1)])
+    (theta, thetau) = getLapThetas(v, i1, i1+1)
+    return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
+
 def getLineLaplacian(NPoints):
     I = np.arange(NPoints-1).tolist()
     J = np.arange(NPoints-1)

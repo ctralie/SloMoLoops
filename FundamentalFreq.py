@@ -62,7 +62,7 @@ def estimateFundamentalFreq(x, shortBias = 0.1, doPlot = False):
         plt.scatter(maxidx, corr[maxidx])
         plt.scatter([maxTau], [corr[maxTau]], 100, 'r')
         plt.title("Max Tau = %i, Clarity = %g"%(maxTau, corr[maxTau]))
-    return (maxTau, corr)
+    return {'maxTau':maxTau, 'corr':corr, 'maxidx':maxidx}
 
 if __name__ == '__main__':
     T = 60
