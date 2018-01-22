@@ -78,7 +78,7 @@ Our technique unifies many disparate ideas that have appeared before in differen
 \begin{figure*}
 \centering
 \includegraphics[width=\textwidth]{BlockDiagram.pdf}
-\caption{An block diagram of our technique, illustrated by a 1D periodic time series with additive Gaussian noise ($n_t \in \mathcal{N}(0, 1)$).  We estimate the period to be 24 (a multiple of the fundamental frequency), and perform a 24-length sliding window embedding.  From this, we use the mean of the birth and death time of the largest persistence dot to autotune the scale $\sigma$ for the graph Laplacian, from which we derive circular coordinates $\sigma$, which can be used to reorder the sliding windows and use them to vote on a final slow motion template.}
+\caption{An block diagram of our technique, illustrated by a 1D periodic time series with additive Gaussian noise ($n_t \in \mathcal{N}(0, 1)$).  We estimate the period to be 24 (a multiple of the fundamental frequency), and perform a 24-length sliding window embedding.  From this, we use the mean of the birth and death time of the largest persistence dot to autotune the scale $\sigma$ for the graph Laplacian, from which we derive circular coordinates $\phi$, which can be used to reorder the sliding windows and use them to vote on a final slow motion template.}
 \label{fig:ConceptFigure}
 \end{figure*}
 
