@@ -84,7 +84,7 @@ Our technique unifies many disparate ideas that have appeared before in differen
 
 
 
-We now describe our algorithm in several stages.  Throughout our discussion, we assume we are dealing with 3 channel color videos.  For a frame resolution of $W \times H$, each frame can be thought of as a Euclidean vector in $\mathbb{R}^{W \times H \times 3}$.  For a video with $N$ frames, we flatten each frame to a 1D vector and stack them row wise along an $N \times 3WH$ matrix $X$.  Whenever we perform a linear operation on all of the pixels at once, we can use the SVD $X = USV^T$ to reduce memory and computational costs by working with $US$ in place of $X$, which is in $N$ dimensions instead of $3WH \gg N$ (similar processing was done in \cite{turk1991eigenfaces} and \cite{tralie2017quasi}).  The only nonlinear operation is the median operation (Section~\ref{sec:cyclereordering}), and we project back into pixel space using $V^T$ before taking the median. Algorithm~\ref{alg:videoreordering} shows the full details of our method in pseudocode.
+We now describe our algorithm in several stages.  Throughout our discussion, we assume we are dealing with 3 channel color videos.  For a frame resolution of $W \times H$, each frame can be thought of as a Euclidean vector in $\mathbb{R}^{W \times H \times 3}$.  For a video with $N$ frames, we flatten each frame to a 1D vector and stack them row wise along an $N \times 3WH$ matrix $X$.  Whenever we perform a linear operation on all of the pixels at once, we can use the SVD $X = USV^T$ to reduce memory and computational costs by working with $US$ in place of $X$, which is in $N$ dimensions instead of $3WH \gg N$ (similar processing was done in \cite{turk1991eigenfaces} and \cite{tralie2017quasi}).  The only nonlinear operation is the median operation (Section~\ref{sec:cyclereordering}), and we project back into pixel space using $V^T$ before taking the median.
 
 \subsection{Sliding Window Embeddings}
 \label{sec:slidingwindow}
@@ -105,6 +105,8 @@ where $\tau$ is a step size and $d$ is the dimension of the embedding.  In this 
 which means the first two nonzero eigenvectors should be a sine and cosine, or orthogonal linear combinations therein.  When plotted against each other, they make an approximate circle, and the arctangent of the two eigenvector coordinates at every window can be used to determine the {\em phase} of the corresponding window in the periodic signal.  The first sample of each window can then be re-sorted by phase.
 
 Talk about autotuning with peristent homology, mention that it's the opposite of the approach in \cite{bendich2011improving}.
+
+Talk about how it can pick up on harmonics (e.g. jumping jacks), which is why this is important
 
 \subsection{Cycle Reordering And Median Voting}
 \label{sec:cyclereordering}

@@ -12,26 +12,7 @@ import scipy.sparse as sparse
 import scipy.interpolate as interp
 from sklearn import manifold
 import time
-
 import argparse
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--show-plots', dest='doPlot', action='store_true', help='Show plots of circular coordinates')
-parser.add_argument('--do-image-analogies', dest='image_analogies', action='store_true', help='use image analogies to sharpen')
-parser.add_argument('--is-median-reorder', dest='median_reorder', action='store_true', help='enable median reordering')
-parser.add_argument('--is-simple-reorder', dest='median_reorder', action='store_false', help='enable simple reordering')
-parser.add_argument('--is-weighted-laplacian', dest='weighted_laplacian', action='store_true', help='enable weighted laplacian')
-parser.add_argument('--is-unweighted-laplacian', dest='weighted_laplacian', action='store_false', help='enable unweighted laplacian')
-parser.add_argument('--is-net-feat', dest='net_feat', action='store_true', help='enable resnet features')
-parser.add_argument('--is-pyr-feat', dest='net_feat', action='store_false', help='enable gaussian pyramid features')
-parser.add_argument('--pyr_level', type=int, default=0, help="pyramid level")
-parser.add_argument('--net_depth', type=int, default=0, help="at what layer do we extract features")
-parser.add_argument('--filename', default='jumpingjacks2menlowres.ogg', help="video filename")
-parser.set_defaults(median_reorder=False)
-parser.set_defaults(weighted_laplacian=False)
-parser.set_defaults(net_feat=False)
-
-opt = parser.parse_args()
 
 def getReorderedConsensus1D(X, N, thetau, doPlot = False):
     """
@@ -199,7 +180,7 @@ def sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew, NExamples = 20):
 
 def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
                 doSimple = False, doImageAnalogies = False, doPlot = True, \
-                Verbose = False, fileprefix = "", Kappa = -1, p = 2):
+                Verbose = False, fileprefix = "", Kappa = -1, p = 41):
     """
     Reorder the video based on circular coordinates of a sliding
     window embedding
@@ -216,7 +197,6 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         instead of TDA-based thresholds
     :param p: Field coefficient to use in rips filtration
     """
-    print("doImageAnalogies = ", doImageAnalogies)
     tic = time.time()
     if Verbose:
         print("Doing PCA on video...")
@@ -246,8 +226,6 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         plt.subplot(211)
         plt.title("Chosen Dim = %i"%dim)
         plt.savefig("%s_FundamentalFreq.svg"%fileprefix, bbox_inches = 'tight')
-
-    print("dim = %i"%dim)
     #Do sliding window
     XS = getSlidingWindowVideoInteger(X, dim)
 
@@ -257,11 +235,15 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
     D = getSSM(Y)
 
     if Kappa > 0 and Kappa < 1:
-        res = getLapCircularCoordinatesKNN(D, Kappa)
+        if Weighted:
+            res = getLapCircularCoordinatesKNNWeighted(D, Kappa)
+        else:
+            res = getLapCircularCoordinatesKNN(D, Kappa)
     else:
         tic = time.time()
         Is = ripser.doRipsFiltrationDM(D, 1, coeff=p)
-        print("Elapsed Time Ripser: %g"%(time.time() - tic))
+        if Verbose:
+            print("Elapsed Time Ripser: %g"%(time.time() - tic))
         I = Is[1]
         thresh = np.argmax(I[:, 1] - I[:, 0])
         thresh = np.mean(I[thresh, :])
@@ -275,7 +257,6 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         else:
             res = getLapCircularCoordinatesThresh(D, thresh)
     [w, v, theta, thetau, A, idxs] = [res['w'], res['v'], res['theta'], res['thetau'], res['A'], res['idxs']]
-    print("Elapsed Time Circular Coordinates: %g"%(time.time() - tic))
 
     if doPlot:
         plt.clf()
@@ -302,7 +283,6 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
     XRet = None
     if doSimple:
         idx = np.argsort(np.mod(thetau, 2*np.pi))
-        print('idx:',idx)
         XRet = XOrig[idx, :]
     else:
         # done for the original video
@@ -324,12 +304,10 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         VT_orig = U_orig.T.dot(I_orig)/np.sqrt(lam_orig[:, None])
         X_proj = U_orig*np.sqrt(lam_orig[None, :])
         if doImageAnalogies:
-            print('X proj shape:',X_proj.shape,'X shape:',XDown.shape)
             XDownNew = getReorderedConsensusVideo(X_proj, IDimsDown, Mu_orig, VT_orig, dim, thetau, doPlot, Verbose, lookAtVotes = False)
             saveVideo(XDownNew, IDimsDown, "ConsensusDownsampled.avi")
             XRet = sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew)
         else:
-            print('X proj shape:',X_proj.shape,'X shape:',XOrig.shape)
             XRet = getReorderedConsensusVideo(X_proj, IDims, Mu_orig, VT_orig, dim, thetau, doPlot, Verbose, lookAtVotes = False)
     return {'X':XRet, 'IDims':IDims, 'theta':theta, 'thetau':thetau}
 
@@ -344,12 +322,28 @@ def get_out_fileprefix(base_filename, inputfilename, do_simple, is_weighted, \
     return filename
 
 if __name__ == '__main__':
-    from SyntheticVideos import getCircleRotatingVideo
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--show-plots', dest='doPlot', action='store_true', help='Show plots of circular coordinates')
+    parser.add_argument('--do-image-analogies', dest='image_analogies', action='store_true', help='use image analogies to sharpen')
+    parser.add_argument('--is-median-reorder', dest='median_reorder', action='store_true', help='enable median reordering')
+    parser.add_argument('--is-simple-reorder', dest='median_reorder', action='store_false', help='enable simple reordering')
+    parser.add_argument('--is-weighted-laplacian', dest='weighted_laplacian', action='store_true', help='enable weighted laplacian')
+    parser.add_argument('--is-unweighted-laplacian', dest='weighted_laplacian', action='store_false', help='enable unweighted laplacian')
+    parser.add_argument('--is-net-feat', dest='net_feat', action='store_true', help='enable resnet features')
+    parser.add_argument('--is-pyr-feat', dest='net_feat', action='store_false', help='enable gaussian pyramid features')
+    parser.add_argument('--pyr_level', type=int, default=0, help="pyramid level")
+    parser.add_argument('--net_depth', type=int, default=0, help="at what layer do we extract features")
+    parser.add_argument('--filename', default='jumpingjacks2menlowres.ogg', help="video filename")
+    parser.set_defaults(median_reorder=False)
+    parser.set_defaults(weighted_laplacian=False)
+    parser.set_defaults(net_feat=False)
+
+    opt = parser.parse_args()
+
     print("weighted_laplacian = ", opt.weighted_laplacian)
     I, I_feat, IDims = loadVideoResNetFeats(opt.filename,opt.net_depth) if opt.net_feat else loadImageIOVideo(opt.filename,pyr_level=opt.pyr_level)
     print('I shape:',I.shape,'I feat shape:',I_feat.shape)
-    #(I, IDims) = getCircleRotatingVideo()
-    #saveVideo(I, IDims, "circle.avi")
+
     fileprefix = get_out_fileprefix('reordered', opt.filename, (not opt.median_reorder), opt.weighted_laplacian, opt.net_feat, opt.pyr_level, opt.net_depth)
     XNew = reorderVideo(I, I_feat, IDims, derivWin = 2, Weighted = opt.weighted_laplacian, \
                         doSimple = (not opt.median_reorder), doPlot = opt.doPlot, Verbose = True, \
