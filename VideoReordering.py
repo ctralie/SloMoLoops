@@ -345,7 +345,7 @@ if __name__ == '__main__':
     print('I shape:',I.shape,'I feat shape:',I_feat.shape)
 
     fileprefix = get_out_fileprefix('reordered', opt.filename, (not opt.median_reorder), opt.weighted_laplacian, opt.net_feat, opt.pyr_level, opt.net_depth)
-    XNew = reorderVideo(I, I_feat, IDims, derivWin = 2, Weighted = opt.weighted_laplacian, \
+    XNew = reorderVideo(I, I_feat, IDims, derivWin = 0, Weighted = opt.weighted_laplacian, \
                         doSimple = (not opt.median_reorder), doPlot = opt.doPlot, Verbose = True, \
                         doImageAnalogies = opt.image_analogies, fileprefix = fileprefix)['X']
     saveVideo(XNew, IDims, fileprefix+".avi")
