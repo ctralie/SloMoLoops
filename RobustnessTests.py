@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
 import argparse
+import os
 
 def getVideoPyramid(I, IDims, pyr_level):
     """
@@ -18,6 +19,49 @@ def getVideoPyramid(I, IDims, pyr_level):
         frame = np.reshape(I[i, :], IDims)
         feat_frame = tuple(pyramid_gaussian(frame, pyr_level, downscale = 2))[-1]
         IRet.append(feat_frame.flatten())
+    return np.array(IRet)
+
+def getVideoResNet(IOrig, IDims, depth):
+    import torch
+    import torch.nn as nn
+    import torch.backends.cudnn as cudnn
+    import torchvision.transforms as transforms
+    import torchvision.models as models
+    from torch.autograd import Variable
+
+    # get first layers of network - we can try out different things here
+    if depth == 0:
+        shallow_layers = ['conv1','bn1','relu','maxpool']
+    elif depth == 1:
+        shallow_layers = ['conv1','bn1','relu','maxpool','layer1']
+    else:
+        print('unknown depth?',depth)
+        shallow_layers = ['conv1','bn1','relu','maxpool']
+    net = models.__dict__['resnet18'](pretrained=True)
+    net.eval()
+    resnet_module = net.modules().__next__()
+    resnet_modules = resnet_module.named_children()
+    shallow_nn = []
+    for module_name,module in resnet_modules:
+        if module_name in shallow_layers:
+            shallow_nn.append(module)
+
+    # preprocessing for network
+    full_transform = transforms.Compose([transforms.ToTensor(),transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+
+    NFrames = IOrig.shape[0]
+    IRet = []
+    for i in range(0, NFrames):
+        frame = np.array(255.0*np.reshape(IOrig[i, :], IDims), dtype = np.uint8)
+        frame_th = full_transform(Image.fromarray(frame)) # easiest to convert to PIL, then apply torch transforms
+        frame_mb = frame_th.view(1,frame_th.size()[0],frame_th.size()[1],frame_th.size()[2])
+        frame_var = Variable(frame_mb,requires_grad=False)
+        for module in shallow_nn:
+            frame_var = module(frame_var)
+        th_data = frame_var.data
+        single_th_data = th_data.view(th_data.size()[1],th_data.size()[2],th_data.size()[3])
+        feat_frame = single_th_data.numpy()
+        IRet.append(np.array(feat_frame.flatten(), dtype = np.float32))
     return np.array(IRet)
 
 def getCircleDist(x, y):
@@ -66,12 +110,16 @@ def doTest(filename, NCycles, noise, shake, fileprefix = "", Verbose = False, sa
     if saveVideos:
         saveVideo(I, IDims, "%s_simulated.avi"%fileprefix)
     ret = {}
-    for pyr_level in range(4):
-        I_feat = getVideoPyramid(I, IDims, pyr_level)
+    for pyr_level in range(-2, 4):
+        if pyr_level >= 0:
+            I_feat = getVideoPyramid(I, IDims, pyr_level)
+        else:
+            depth = -pyr_level - 1
+            I_feat = getVideoResNet(I, IDims, depth)
         for Kappa in [0, 0.05, 0.1, 0.15]:
             for Weighted in [True, False]:
                 thisprefix = "%i_%g_%i"%(pyr_level, Kappa, Weighted)
-                res = reorderVideo(I, I_feat, IDims, derivWin = 2, Weighted = Weighted, \
+                res = reorderVideo(I, I_feat, IDims, derivWin = 0, Weighted = Weighted, \
                                     doSimple = doSimple, doPlot = doPlot, Verbose = Verbose, \
                                     doImageAnalogies = False, Kappa = Kappa, fileprefix = fileprefix+thisprefix)
                 theta = np.mod(res['thetau'], 2*np.pi)
@@ -127,16 +175,21 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch', type=int, default=0, help="batch")
     parser.add_argument('--out_dir', type=str, default=".", help="out directory")
+    parser.add_argument('--videofile', type=str, default='Videos/SlowMotionTemplateSimple.avi', help="Template video")
     opt = parser.parse_args()
 
-    filename = 'Videos/SlowMotionTemplateSimple.avi'
+    filename = opt.videofile
     #"""
     outdir = opt.out_dir
     batchidx = opt.batch
     print("Doing Batch %i..."%batchidx)
-    fout = open("%s/%i.html"%(outdir, batchidx), "w")
-    doBatchTests(filename, fout, batchidx)
-    fout.close()
+    htmlfilename = "%s/%i.html"%(outdir, batchidx)
+    if not os.path.exists(htmlfilename):
+        fout = open(htmlfilename, "w")
+        doBatchTests(filename, fout, batchidx)
+        fout.close()
+    else:
+        print("Skipping %s"%htmlfilename)
     
     """
     fout = open("results.html", "w")
