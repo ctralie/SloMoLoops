@@ -74,12 +74,14 @@ def getKendallTauCircle(rank1, rank2):
     on the circle
     """
     N = len(rank1)
-    diff = rank1[None, :] - rank1[:, None]
+    r1 = rank1/float(N)
+    r2 = rank2/float(N)
+    diff = r1[None, :] - r1[:, None]
     A = np.sign(diff)
-    A[np.abs(A) > np.pi] *= -1 #Wrap around
-    diff = rank2[None, :] - rank2[:, None]
+    A[np.abs(diff) > 0.5] *= -1 #Wrap around
+    diff = r2[None, :] - r2[:, None]
     B = np.sign(diff)
-    B[np.abs(B) > np.pi] *= -1
+    B[np.abs(diff) > 0.5] *= -1
     return np.sum(A*B)/float(N*(N-1))
 
 def getCycles(NCycles, filename, NFinal = -1):
@@ -122,32 +124,34 @@ def doTest(filename, NCycles, noise, shake, fileprefix = "", Verbose = False, sa
             I_feat = getVideoResNet(I, IDims, depth)
         for Kappa in [0, 0.05, 0.1, 0.15]:
             for Weighted in [True, False]:
-                thisprefix = "%i_%g_%i"%(pyr_level, Kappa, Weighted)
-                res = reorderVideo(I, I_feat, IDims, derivWin = 0, Weighted = Weighted, \
-                                    doSimple = doSimple, doPlot = doPlot, Verbose = Verbose, \
-                                    doImageAnalogies = False, Kappa = Kappa, \
-                                    fileprefix = fileprefix+thisprefix, returnAnswer = False)
-                theta = np.mod(res['thetau'], 2*np.pi)
-                thetagt = thetagt[0:len(theta)]
-                theta = theta[0:len(thetagt)]
-                circErr = np.mean(getCircleDist(theta, thetagt))
-                rank1 = 0*thetagt
-                rank1[np.argsort(thetagt)] = np.arange(len(rank1))
-                rank2 = 0*rank1
-                rank2[np.argsort(theta)] = np.arange(len(rank2))
-                kendTau = getKendallTauCircle(rank1, rank2)
-                ret[thisprefix] = [circErr, kendTau]
-                if doPlot:
-                    plt.figure(figsize=(8, 6))
-                    plt.subplot(211)
-                    plt.scatter(thetagt, theta)
-                    plt.title("err = %.3g"%circErr)
-                    plt.subplot(212)
-                    plt.scatter(rank1, rank2)
-                    plt.title("$\\tau = %.3g$"%kendTau)
-                    plt.savefig("%s_CircCoordsCorr.svg"%(fileprefix+thisprefix), bbox_inches = 'tight')
-                if saveVideos:
-                    saveVideo(res['X'], IDims, (fileprefix+thisprefix)+".avi")
+                for doSlidingWindow in [True, False]:
+                    thisprefix = "%i_%i_%g_%i"%(doSlidingWindow, pyr_level, Kappa, Weighted)
+                    res = reorderVideo(I, I_feat, IDims, derivWin = 0, Weighted = Weighted, \
+                                        doSimple = doSimple, doPlot = doPlot, Verbose = Verbose, \
+                                        doImageAnalogies = False, Kappa = Kappa, \
+                                        fileprefix = fileprefix+thisprefix, returnAnswer = False, \
+                                        doSlidingWindow = doSlidingWindow)
+                    theta = np.mod(res['thetau'], 2*np.pi)
+                    thetagt = thetagt[0:len(theta)]
+                    theta = theta[0:len(thetagt)]
+                    circErr = np.mean(getCircleDist(theta, thetagt))
+                    rank1 = 0*thetagt
+                    rank1[np.argsort(thetagt)] = np.arange(len(rank1))
+                    rank2 = 0*rank1
+                    rank2[np.argsort(theta)] = np.arange(len(rank2))
+                    kendTau = getKendallTauCircle(rank1, rank2)
+                    ret[thisprefix] = [circErr, kendTau]
+                    if doPlot:
+                        plt.figure(figsize=(8, 6))
+                        plt.subplot(211)
+                        plt.scatter(thetagt, theta)
+                        plt.title("err = %.3g"%circErr)
+                        plt.subplot(212)
+                        plt.scatter(rank1, rank2)
+                        plt.title("$\\tau = %.3g$"%kendTau)
+                        plt.savefig("%s_CircCoordsCorr.svg"%(fileprefix+thisprefix), bbox_inches = 'tight')
+                    if saveVideos:
+                        saveVideo(res['X'], IDims, (fileprefix+thisprefix)+".avi")
     return ret
 
 def writeBatchHeader(fout, filename):
@@ -155,13 +159,13 @@ def writeBatchHeader(fout, filename):
     fout.write("""<html>
     <body><h1>{}</h1>
     <table border = "1">
-    <tr><td>NCycles</td><td>Noise</td><td>Shake</td><td>Trial Number</td>
-        <td>Pyramid Level</td><td>Kappa</td><td>Weighted</td><td>Circ Error</td><td>Kendall Tau</td></tr>   
+    <tr><td>NCycles</td><td>Noise</td><td>Shake</td><td>TrialNumber</td><td>SlidingWindow</td>
+        <td>PyramidLevel</td><td>Kappa</td><td>Weighted</td><td>CircError</td><td>KendallTau</td></tr>   
     """.format(filename))
 
 def doBatchTests(filename, fout, batchidx = -1):
     idx = 0
-    for NCycles in [3, 5, 10, 20, 30, 50, 100]:
+    for NCycles in [3, 5, 10, 20, 30, 50, 70, 100, 200]:
         for noise in [0, 1, 2, 3]:
             for shake in [0, 20, 40, 80]:
                 for trial in range(1):
@@ -171,7 +175,7 @@ def doBatchTests(filename, fout, batchidx = -1):
                         for item in ret:
                             fout.write("<tr>")
                             fout.write("<td>%i</td><td>%g</td><td>%i</td><td>%i</td>"%(NCycles, noise, shake, trial))
-                            fout.write(("<td>%s</td>"*3)%tuple(item.split("_")))
+                            fout.write(("<td>%s</td>"*4)%tuple(item.split("_")))
                             fout.write(("<td>%g</td>"*2)%tuple(ret[item]))
                             fout.write("</tr>\n")
                             fout.flush()
@@ -197,7 +201,7 @@ if __name__ == '__main__':
     parser.add_argument('--NCycles', type=int, default=0, help = "Number of cycles")
     parser.add_argument('--shake', type=int, default=0, help = "Shake by pixels")
     parser.add_argument('--noise', type=float, default=0, help = "AWGN coefficient")
-    parser.add_argument('--makeplots', type=int, default=0, help='enable gaussian pyramid features')
+    parser.add_argument('--makeplots', type=int, default=0, help='Save plots of circular coordinates to disk')
     opt = parser.parse_args()
 
     filename = opt.videofile
@@ -219,7 +223,7 @@ if __name__ == '__main__':
         for item in ret:
             fout.write("<tr>")
             fout.write("<td>%i</td><td>%g</td><td>%i</td><td>%i</td>"%(NCycles, noise, shake, trial))
-            fout.write(("<td>%s</td>"*3)%tuple(item.split("_")))
+            fout.write(("<td>%s</td>"*4)%tuple(item.split("_")))
             fout.write(("<td>%g</td>"*2)%tuple(ret[item]))
             fout.write("</tr>\n")
             fout.flush()

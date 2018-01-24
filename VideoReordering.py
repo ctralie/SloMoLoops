@@ -180,7 +180,8 @@ def sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew, NExamples = 20):
 
 def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
                 doSimple = False, doImageAnalogies = False, doPlot = True, \
-                Verbose = False, fileprefix = "", Kappa = -1, p = 41, returnAnswer = True):
+                Verbose = False, fileprefix = "", Kappa = -1, p = 41, \
+                returnAnswer = True, doSlidingWindow = True):
     """
     Reorder the video based on circular coordinates of a sliding
     window embedding
@@ -217,17 +218,20 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
     XIso = manifold.Isomap(10, 2).fit_transform(X)
     if doPlot:
         plt.figure(figsize=(18, 12))
-    dim = int(np.round(estimateFundamentalFreq(XIso[:, 0], doPlot = doPlot)['maxTau']))
-    for k in range(2):
-        #Make window size larger, within reason
-        if dim*2 < int(0.25*XOrig.shape[0]):
-            dim *= 2
-    if doPlot:
-        plt.subplot(211)
-        plt.title("Chosen Dim = %i"%dim)
-        plt.savefig("%s_FundamentalFreq.svg"%fileprefix, bbox_inches = 'tight')
-    #Do sliding window
-    XS = getSlidingWindowVideoInteger(X, dim)
+    dim = 0
+    XS = X
+    if doSlidingWindow:
+        dim = int(np.round(estimateFundamentalFreq(XIso[:, 0], doPlot = doPlot)['maxTau']))
+        for k in range(2):
+            #Make window size larger, within reason
+            if dim*2 < int(0.25*XOrig.shape[0]):
+                dim *= 2
+        if doPlot:
+            plt.subplot(211)
+            plt.title("Chosen Dim = %i"%dim)
+            plt.savefig("%s_FundamentalFreq.svg"%fileprefix, bbox_inches = 'tight')
+        #Do sliding window
+        XS = getSlidingWindowVideoInteger(X, dim)
 
     #Mean-center and normalize sliding window
     Y = XS - np.mean(XS, 1)[:, None]
@@ -245,10 +249,15 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         tic = time.time()
         Is = doRipsFiltrationDMGUDHI(D, 1, coeff=p)
         if Verbose:
-            print("Elapsed Time Ripser: %g"%(time.time() - tic))
+            print("Elapsed Time H1: %g"%(time.time() - tic))
         I = Is[1]
         thresh = np.argmax(I[:, 1] - I[:, 0])
-        thresh = np.mean(I[thresh, :])
+        if Weighted:
+            #In the weighted case, use the birth time as the threshold
+            thresh = I[thresh, 0]
+        else:
+            #In the unweighted case, use the mean of birth and death for robustness
+            thresh = np.mean(I[thresh, :])
         tic = time.time()
         if Weighted:
             if doPlot:
