@@ -1,5 +1,6 @@
 from VideoTools import *
 from VideoReordering import *
+from multiprocessing import Pool as PPool
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
@@ -81,15 +82,16 @@ def getKendallTauCircle(rank1, rank2):
     B[np.abs(B) > np.pi] *= -1
     return np.sum(A*B)/float(N*(N-1))
 
-def getCycles(NCycles, NFinal, filename):
+def getCycles(NCycles, filename, NFinal = -1):
     I, I_feat, IDims = loadImageIOVideo(filename)
     N = I.shape[0]
     theta = np.linspace(0, 2*np.pi, N)
     idx = np.mod(NCycles*np.arange(N), N)
-    if NFinal == -1:
-        NFinal = N
-    starti = np.random.randint(len(idx)-NFinal)
-    idx = idx[starti:starti+NFinal]
+    if NFinal > 0:
+        starti = np.random.randint(len(idx)-NFinal)
+        idx = idx[starti:starti+NFinal]
+    #Circularly permute indices
+    idx = np.roll(idx, np.random.randint(len(idx)))
     theta = theta[idx]
     theta = np.unwrap(theta)
     theta = theta - np.min(theta)
@@ -102,15 +104,17 @@ def doTest(filename, NCycles, noise, shake, fileprefix = "", Verbose = False, sa
         doPlot = True
     doSimple = True
     #Range over: Period, Noise Amount, Shake Amount
-    res = getCycles(NCycles = NCycles, NFinal = 300, filename = filename)
+    res = getCycles(NCycles = NCycles, filename = filename)
     [I, IDims, thetagt] = [res['I'], res['IDims'], res['theta']]
     I += noise*np.random.randn(I.shape[0], I.shape[1])
     if shake > 0:
-        I = simulateCameraShake(I, IDims, shake)
+        simulateCameraShake(I, IDims, shake)
     if saveVideos:
         saveVideo(I, IDims, "%s_simulated.avi"%fileprefix)
     ret = {}
     for pyr_level in range(-2, 4):
+        if Verbose:
+            print("pyr_level = %i"%pyr_level)
         if pyr_level >= 0:
             I_feat = getVideoPyramid(I, IDims, pyr_level)
         else:
@@ -121,7 +125,8 @@ def doTest(filename, NCycles, noise, shake, fileprefix = "", Verbose = False, sa
                 thisprefix = "%i_%g_%i"%(pyr_level, Kappa, Weighted)
                 res = reorderVideo(I, I_feat, IDims, derivWin = 0, Weighted = Weighted, \
                                     doSimple = doSimple, doPlot = doPlot, Verbose = Verbose, \
-                                    doImageAnalogies = False, Kappa = Kappa, fileprefix = fileprefix+thisprefix)
+                                    doImageAnalogies = False, Kappa = Kappa, \
+                                    fileprefix = fileprefix+thisprefix, returnAnswer = False)
                 theta = np.mod(res['thetau'], 2*np.pi)
                 thetagt = thetagt[0:len(theta)]
                 theta = theta[0:len(thetagt)]
@@ -156,12 +161,13 @@ def writeBatchHeader(fout, filename):
 
 def doBatchTests(filename, fout, batchidx = -1):
     idx = 0
-    for NCycles in [5, 10, 20, 30, 40]:
+    for NCycles in [3, 5, 10, 20, 30, 50, 100]:
         for noise in [0, 1, 2, 3]:
             for shake in [0, 20, 40, 80]:
-                for trial in range(20):
+                for trial in range(1):
                     if idx == batchidx:
-                        ret = doTest(filename, NCycles, noise, shake)
+                        np.random.seed(idx)
+                        ret = doTest(filename, NCycles, noise, shake, Verbose = True)
                         for item in ret:
                             fout.write("<tr>")
                             fout.write("<td>%i</td><td>%g</td><td>%i</td><td>%i</td>"%(NCycles, noise, shake, trial))
@@ -171,17 +177,8 @@ def doBatchTests(filename, fout, batchidx = -1):
                             fout.flush()
                     idx += 1
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--batch', type=int, default=0, help="batch")
-    parser.add_argument('--out_dir', type=str, default=".", help="out directory")
-    parser.add_argument('--videofile', type=str, default='Videos/SlowMotionTemplateSimple.avi', help="Template video")
-    opt = parser.parse_args()
-
-    filename = opt.videofile
-    #"""
-    outdir = opt.out_dir
-    batchidx = opt.batch
+def doBatch(args):
+    (filename, outdir, batchidx) = args
     print("Doing Batch %i..."%batchidx)
     htmlfilename = "%s/%i.html"%(outdir, batchidx)
     if not os.path.exists(htmlfilename):
@@ -190,10 +187,51 @@ if __name__ == '__main__':
         fout.close()
     else:
         print("Skipping %s"%htmlfilename)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--batch', type=int, default=0, help="batch")
+    parser.add_argument('--nthreads', type=int, default=3, help="Number of threads in parallel pool")
+    parser.add_argument('--out_dir', type=str, default=".", help="out directory")
+    parser.add_argument('--videofile', type=str, default='Videos/SlowMotionTemplateHarmonic.avi', help="Template video")
+    parser.add_argument('--NCycles', type=int, default=0, help = "Number of cycles")
+    parser.add_argument('--shake', type=int, default=0, help = "Shake by pixels")
+    parser.add_argument('--noise', type=float, default=0, help = "AWGN coefficient")
+    parser.add_argument('--makeplots', type=int, default=0, help='enable gaussian pyramid features')
+    opt = parser.parse_args()
+
+    filename = opt.videofile
+    outdir = opt.out_dir
+    batchidx = opt.batch
     
-    """
-    fout = open("results.html", "w")
-    writeBatchHeader(fout, filename)
-    doBatchTests(filename, fout)
-    fout.write("</table></html>")
-    """
+    if opt.NCycles > 0:
+        NCycles = opt.NCycles
+        noise = opt.noise
+        shake = opt.shake
+        fileprefix = "%i_%g_%i"%(NCycles, noise, shake)
+        trial = 0
+        htmlfilename = "%s/%s.html"%(outdir, fileprefix)
+        fout = open(htmlfilename, "w")
+        writeBatchHeader(fout, filename)
+        if not opt.makeplots:
+            fileprefix = ""
+        ret = doTest(filename, NCycles, noise, shake, Verbose = True, fileprefix=fileprefix)
+        for item in ret:
+            fout.write("<tr>")
+            fout.write("<td>%i</td><td>%g</td><td>%i</td><td>%i</td>"%(NCycles, noise, shake, trial))
+            fout.write(("<td>%s</td>"*3)%tuple(item.split("_")))
+            fout.write(("<td>%g</td>"*2)%tuple(ret[item]))
+            fout.write("</tr>\n")
+            fout.flush()
+        fout.close()
+    else:
+        if batchidx >= 0:
+            doBatch((filename, outdir, batchidx))
+        else:
+            fout = open("header.html", "w")
+            writeBatchHeader(fout, filename)
+            fout.close()
+            NBatches = -batchidx
+            args = zip([filename]*NBatches, [outdir]*NBatches, range(NBatches))
+            parpool = PPool(opt.nthreads)
+            parpool.map(doBatch, args)

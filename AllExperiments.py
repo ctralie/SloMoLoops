@@ -13,11 +13,12 @@ pyrLevel = 2
 for V in Videos:
     for medianReorder in [0, 1]:
         for weighted in [0, 1]:
-            strs = [MedianOpt[medianReorder], LapOpt[weighted]]
-            fileprefix = get_out_fileprefix('reordered', V, not medianReorder, weighted, opt.net_feat, pyrLevel, opt.net_depth)
-            print(fileprefix)
-            if os.path.exists("%s.avi"%fileprefix):
-                print("Skipping %s..."%fileprefix)
-                continue
-            cmd = ["python", "VideoReordering.py", "--filename", V, "--show-plots", "--pyr_level", "%i"%pyrLevel] + strs
-            subprocess.call(cmd)
+            for Kappa in [0, 0.05, 0.1, 0.15]:
+                strs = [MedianOpt[medianReorder], LapOpt[weighted]]
+                fileprefix = get_out_fileprefix('reordered', V, not medianReorder, weighted, False, pyrLevel, 0, Kappa=Kappa)
+                print(fileprefix)
+                if os.path.exists("%s.avi"%fileprefix):
+                    print("Skipping %s..."%fileprefix)
+                    continue
+                cmd = ["python", "VideoReordering.py", "--filename", V, "--show-plots", "--pyr_level", "%i"%pyrLevel, "--Kappa", "%g"%Kappa] + strs
+                subprocess.call(cmd)

@@ -473,17 +473,17 @@ def getRandomMotionBlurMask(extent):
     return (Y, I)
 
 def simulateCameraShake(I, IDims, shakeMag):
-    J = np.zeros(I.shape)
-    for i in range(J.shape[0]):
-        print("Blurring frame %i of %i"%(i, J.shape[0]))
+    """
+    Do the blur in place to save memory
+    """
+    for i in range(I.shape[0]):
+        print("Blurring frame %i of %i"%(i, I.shape[0]))
         X = np.reshape(I[i, :], IDims)
         (_, mask) = getRandomMotionBlurMask(shakeMag)
         IBlur = 0*X
         for k in range(X.shape[2]):
             IBlur[:, :, k] = scipy.signal.fftconvolve(X[:, :, k], mask, 'same')
-        #IBlur = np.array(IBlur, dtype=np.uint8)
-        J[i, :] = IBlur.flatten()
-    return J
+        I[i, :] = IBlur.flatten()
 
 if __name__ == '__main__2':
     (I, IDims) = loadVideo("VocalCordsVideos/LTR_ED_MucusBiphonCrop.avi")

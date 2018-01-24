@@ -1,10 +1,10 @@
 from VideoTools import *
-from ripser import ripser
 from CSMSSMTools import *
 from Laplacian import *
 from FundamentalFreq import *
 from PatchTools import *
 from ImageAnalogies import *
+from TDA import *
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimage
@@ -180,7 +180,7 @@ def sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew, NExamples = 20):
 
 def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
                 doSimple = False, doImageAnalogies = False, doPlot = True, \
-                Verbose = False, fileprefix = "", Kappa = -1, p = 41):
+                Verbose = False, fileprefix = "", Kappa = -1, p = 41, returnAnswer = True):
     """
     Reorder the video based on circular coordinates of a sliding
     window embedding
@@ -240,8 +240,10 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         else:
             res = getLapCircularCoordinatesKNN(D, Kappa)
     else:
+        if Verbose:
+            print("Computing H1 on point cloud of size %i..."%D.shape[0])
         tic = time.time()
-        Is = ripser.doRipsFiltrationDM(D, 1, coeff=p)
+        Is = doRipsFiltrationDMGUDHI(D, 1, coeff=p)
         if Verbose:
             print("Elapsed Time Ripser: %g"%(time.time() - tic))
         I = Is[1]
@@ -268,7 +270,7 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         plt.title("Adjacency Matrix")
         plt.subplot(233)
         if not (Kappa > 0 and Kappa < 1):
-            ripser.plotDGM(I)
+            plotDGM(I)
             plt.title("H1, Thresh = %g"%thresh)
         plt.subplot(234)
         plt.imshow(v, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')
@@ -283,7 +285,8 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
     XRet = None
     if doSimple:
         idx = np.argsort(np.mod(thetau, 2*np.pi))
-        XRet = XOrig[idx, :]
+        if returnAnswer:
+            XRet = XOrig[idx, :]
     else:
         # done for the original video
         # Setup downsampled videos for image analogies
@@ -312,10 +315,11 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
     return {'X':XRet, 'IDims':IDims, 'theta':theta, 'thetau':thetau}
 
 def get_out_fileprefix(base_filename, inputfilename, do_simple, is_weighted, \
-                        is_net_feat, pyr_level=0, layer=0):
+                        is_net_feat, pyr_level=0, layer=0, Kappa=0):
     s = inputfilename.split("/")[-1]
     s = s.split(".")[0]
     filename = "Results/"+s+"-"+str(base_filename)+'-'
+    filename = filename+"%g"%Kappa
     filename = filename+'-simple' if do_simple else filename+'-median'
     filename = filename+'-weighted' if is_weighted else filename+'-unweighted'
     filename = filename+'-net-'+str(layer) if is_net_feat else filename+'-img-'+str(pyr_level)
@@ -333,6 +337,7 @@ if __name__ == '__main__':
     parser.add_argument('--is-pyr-feat', dest='net_feat', action='store_false', help='enable gaussian pyramid features')
     parser.add_argument('--pyr_level', type=int, default=0, help="pyramid level")
     parser.add_argument('--net_depth', type=int, default=0, help="at what layer do we extract features")
+    parser.add_argument('--Kappa', type=float, default=0, help="Using nearest neighbors or TDA")
     parser.add_argument('--filename', default='jumpingjacks2menlowres.ogg', help="video filename")
     parser.set_defaults(median_reorder=False)
     parser.set_defaults(weighted_laplacian=False)
@@ -344,10 +349,10 @@ if __name__ == '__main__':
     I, I_feat, IDims = loadVideoResNetFeats(opt.filename,opt.net_depth) if opt.net_feat else loadImageIOVideo(opt.filename,pyr_level=opt.pyr_level)
     print('I shape:',I.shape,'I feat shape:',I_feat.shape)
 
-    fileprefix = get_out_fileprefix('reordered', opt.filename, (not opt.median_reorder), opt.weighted_laplacian, opt.net_feat, opt.pyr_level, opt.net_depth)
+    fileprefix = get_out_fileprefix('reordered', opt.filename, (not opt.median_reorder), opt.weighted_laplacian, opt.net_feat, opt.pyr_level, opt.net_depth, Kappa = opt.Kappa)
     XNew = reorderVideo(I, I_feat, IDims, derivWin = 0, Weighted = opt.weighted_laplacian, \
                         doSimple = (not opt.median_reorder), doPlot = opt.doPlot, Verbose = True, \
-                        doImageAnalogies = opt.image_analogies, fileprefix = fileprefix)['X']
+                        doImageAnalogies = opt.image_analogies, fileprefix = fileprefix, Kappa=opt.Kappa)['X']
     saveVideo(XNew, IDims, fileprefix+".avi")
 
 if __name__ == '__main__2':

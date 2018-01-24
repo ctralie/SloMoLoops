@@ -121,7 +121,7 @@ def getLapCircularCoordinatesThresh(pD, thresh, NEigs = 20, doPlot = False):
         plt.subplot(313)
         plt.plot(v[:, [i1, i1+1]])
         plt.legend(["%i"%i1, "%i"%(i1+1)])
-    (theta, thetau) = getLapThetas(v, 1, 2)
+    (theta, thetau) = getLapThetas(v, i1, i1+1)
     return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
 
 def getLapCircularCoordinatesKNN(D, Kappa, NEigs = 20, doPlot = False):

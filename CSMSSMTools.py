@@ -7,6 +7,8 @@ def getSSM(X):
     D = XSqr[:, None] + XSqr[None, :] - 2*X.dot(X.T)
     D[D < 0] = 0 #Numerical precision
     D = np.sqrt(D)
+    np.fill_diagonal(D, 0)
+    D = 0.5*(D + D.T)
     return D
 
 def getCSM(X, Y):
