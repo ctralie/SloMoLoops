@@ -163,34 +163,35 @@ def writeBatchHeader(fout, filename):
         <td>PyramidLevel</td><td>Kappa</td><td>Weighted</td><td>CircError</td><td>KendallTau</td></tr>   
     """.format(filename))
 
+def writeBatchHeaderCSV(fout, filename):
+    fout.write("NCycles,Noise,Shake,TrialNumber,SlidingWindow,PyramidLevel,Kappa,Weighted,CircError,KendallTau")
+
 def doBatchTests(filename, fout, batchidx = -1):
     idx = 0
     for NCycles in [3, 5, 10, 20, 30, 50, 70, 100, 200]:
         for noise in [0, 1, 2, 3]:
             for shake in [0, 20, 40, 80]:
-                for trial in range(1):
+                for trial in range(10):
                     if idx == batchidx:
                         np.random.seed(idx)
                         ret = doTest(filename, NCycles, noise, shake, Verbose = True)
                         for item in ret:
-                            fout.write("<tr>")
-                            fout.write("<td>%i</td><td>%g</td><td>%i</td><td>%i</td>"%(NCycles, noise, shake, trial))
-                            fout.write(("<td>%s</td>"*4)%tuple(item.split("_")))
-                            fout.write(("<td>%g</td>"*2)%tuple(ret[item]))
-                            fout.write("</tr>\n")
+                            fout.write("%i,%g,%i,%i,"%(NCycles, noise, shake, trial))
+                            fout.write(("%s,"*4)%tuple(item.split("_")))
+                            fout.write(("%g,%g\n")%tuple(ret[item]))
                             fout.flush()
                     idx += 1
 
 def doBatch(args):
     (filename, outdir, batchidx) = args
     print("Doing Batch %i..."%batchidx)
-    htmlfilename = "%s/%i.html"%(outdir, batchidx)
-    if not os.path.exists(htmlfilename):
-        fout = open(htmlfilename, "w")
+    csvfilename = "%s/%i.csv"%(outdir, batchidx)
+    if not os.path.exists(csvfilename):
+        fout = open(csvfilename, "w")
         doBatchTests(filename, fout, batchidx)
         fout.close()
     else:
-        print("Skipping %s"%htmlfilename)
+        print("Skipping %s"%csvfilename)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -232,8 +233,8 @@ if __name__ == '__main__':
         if batchidx >= 0:
             doBatch((filename, outdir, batchidx))
         else:
-            fout = open("header.html", "w")
-            writeBatchHeader(fout, filename)
+            fout = open("header.csv", "w")
+            writeBatchHeaderCSV(fout, filename)
             fout.close()
             NBatches = -batchidx
             args = zip([filename]*NBatches, [outdir]*NBatches, range(NBatches))

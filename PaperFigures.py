@@ -8,7 +8,7 @@ from Laplacian import *
 from CSMSSMTools import *
 from FundamentalFreq import *
 from sklearn.decomposition import PCA
-from ripser import ripser
+from TDA import *
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def makeColorbar(dim1 = 1, dim2 = 3, k = 3):
@@ -81,7 +81,7 @@ def ReorderingExample1D(seed):
 
     #Use rips filtration to guide Laplacian
     D = getSSM(X)
-    Is = ripser.doRipsFiltrationDM(D, 1, coeff=41)
+    Is = doRipsFiltrationDMGUDHI(D, 1, coeff=41)
     I = Is[1]
     thresh = np.argmax(I[:, 1] - I[:, 0])
     thresh = np.mean(I[thresh, :])

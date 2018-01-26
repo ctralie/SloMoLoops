@@ -252,12 +252,7 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
             print("Elapsed Time H1: %g"%(time.time() - tic))
         I = Is[1]
         thresh = np.argmax(I[:, 1] - I[:, 0])
-        if Weighted:
-            #In the weighted case, use the birth time as the threshold
-            thresh = I[thresh, 0]
-        else:
-            #In the unweighted case, use the mean of birth and death for robustness
-            thresh = np.mean(I[thresh, :])
+        thresh = np.mean(I[thresh, :])
         tic = time.time()
         if Weighted:
             if doPlot:
