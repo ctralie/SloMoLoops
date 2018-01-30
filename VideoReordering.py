@@ -68,7 +68,8 @@ def getReorderedConsensus1D(X, N, thetau, doPlot = False):
         plt.show()
     return (Z, np.nanmedian(Z, 0), tidx)
 
-def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, thetau, doPlot = False, Verbose = False, lookAtVotes = False):
+def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, thetau, tdifflim = -1, \
+                                doPlot = False, Verbose = False, lookAtVotes = False):
     """
     Given an array of sliding window videos and circular coordinates,
     reorder the sliding windows to go through one period
@@ -84,7 +85,9 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, thetau, doPlot = False, Ve
     :param VT: The right singular vectors transposed, to get from PCA\
         back to video.  Dimensions NFrames x (NPixels*NChannels)
     :param dim: The sliding window length
-    :param theta: The unwrapped circular coordinates
+    :param thetau: The unwrapped circular coordinates
+    :param tdifflim: The maximum distance away from a nearest frame to interpolate\
+                    (default -1: interpolate all frames)
     :param doPlot: Whether to make a plot showing all of the windows
     :param Verbose: Whether to print out debugging info
     :param lookAtVotes: Whether to output a video for all of the votes\
@@ -92,7 +95,8 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, thetau, doPlot = False, Ve
     """
     N = X.shape[0]
     M = len(thetau)
-   
+    print("tdifflim = ", tdifflim)
+
     #Step 1: Figure out the number of periods that the signal
     #goes through
     NPeriods = (float(N)/M)*np.max(thetau)/(2*np.pi)
@@ -102,7 +106,7 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, thetau, doPlot = False, Ve
     
     #Step 2: Go through each window and use it to vote on final samples
     #in projected coordinates
-    XInterp = np.nan*np.ones((M, X.shape[0], X.shape[1]))
+    XInterp = np.zeros((M, X.shape[0], X.shape[1]))
     pix = np.arange(X.shape[1])
     for i in range(M):
         if Verbose:
@@ -112,13 +116,26 @@ def getReorderedConsensusVideo(X, IDims, Mu, VT, dim, thetau, doPlot = False, Ve
         imin = int(np.ceil(np.min(ts)))
         imax = int(np.floor(np.max(ts)))
         t2 = np.arange(imin, imax+1)
+        tdiffs = np.min(np.abs(t2[None, :] - ts[:, None]), 0)
         #Interpolate the window to fill in missing samples
         f = scipy.interpolate.interp2d(pix, ts, X[idx[i]:idx[i]+dim, :], kind='linear')
         WinNew = f(pix, t2)
+        if tdifflim > 0:
+            WinNew[tdiffs > tdifflim, :] = np.nan
         #saveVideo(WinNew.dot(VT) + Mu, IDims, "%i.avi"%i)
         
-        #TODO: Deal with collisions
-        XInterp[i, np.mod(t2, N), :] = WinNew
+        #Put frames into the proper place, dealing with collisions
+        counts = np.zeros(XInterp.shape[1])
+        for k in range(WinNew.shape[0]):
+            if np.sum(np.isnan(WinNew[k, :])) == 0:
+                t2idx = np.mod(t2[k], N)
+                counts[t2idx] += 1
+                XInterp[i, t2idx, :] = WinNew[k, :]
+        for k in range(len(counts)):
+            if counts[k] > 0:
+                XInterp[i, k, :] /= counts[k]
+            else:
+                XInterp[i, k, :] = np.nan
     
     #Step 3: Project the consensus of each frame back, and do a median voting
     print('VT shape:',VT.shape)
@@ -181,7 +198,8 @@ def sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew, NExamples = 20):
 def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
                 doSimple = False, doImageAnalogies = False, doPlot = True, \
                 Verbose = False, fileprefix = "", Kappa = -1, p = 41, \
-                returnAnswer = True, doSlidingWindow = True):
+                returnAnswer = True, doSlidingWindow = True, \
+                expandWindow = False, tdifflim = -1):
     """
     Reorder the video based on circular coordinates of a sliding
     window embedding
@@ -222,10 +240,11 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
     XS = X
     if doSlidingWindow:
         dim = int(np.round(estimateFundamentalFreq(XIso[:, 0], doPlot = doPlot)['maxTau']))
-        for k in range(2):
-            #Make window size larger, within reason
-            if dim*2 < int(0.25*XOrig.shape[0]):
-                dim *= 2
+        if expandWindow:
+            for k in range(2):
+                #Make window size larger, within reason
+                if dim*2 < int(0.25*XOrig.shape[0]):
+                    dim *= 2
         if doPlot:
             plt.subplot(211)
             plt.title("Chosen Dim = %i"%dim)
@@ -311,11 +330,13 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         VT_orig = U_orig.T.dot(I_orig)/np.sqrt(lam_orig[:, None])
         X_proj = U_orig*np.sqrt(lam_orig[None, :])
         if doImageAnalogies:
-            XDownNew = getReorderedConsensusVideo(X_proj, IDimsDown, Mu_orig, VT_orig, dim, thetau, doPlot, Verbose, lookAtVotes = False)
+            XDownNew = getReorderedConsensusVideo(X_proj, IDimsDown, Mu_orig, VT_orig, dim, thetau, \
+                doPlot=doPlot, Verbose=Verbose, lookAtVotes = False, tdifflim = tdifflim)
             saveVideo(XDownNew, IDimsDown, "ConsensusDownsampled.avi")
             XRet = sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew)
         else:
-            XRet = getReorderedConsensusVideo(X_proj, IDims, Mu_orig, VT_orig, dim, thetau, doPlot, Verbose, lookAtVotes = False)
+            XRet = getReorderedConsensusVideo(X_proj, IDims, Mu_orig, VT_orig, dim, thetau, \
+                doPlot=doPlot, Verbose=Verbose, lookAtVotes = False, tdifflim = tdifflim)
     return {'X':XRet, 'IDims':IDims, 'theta':theta, 'thetau':thetau}
 
 def get_out_fileprefix(base_filename, inputfilename, do_simple, is_weighted, \
@@ -341,6 +362,7 @@ if __name__ == '__main__':
     parser.add_argument('--is-pyr-feat', dest='net_feat', action='store_false', help='enable gaussian pyramid features')
     parser.add_argument('--pyr_level', type=int, default=0, help="pyramid level")
     parser.add_argument('--net_depth', type=int, default=0, help="at what layer do we extract features")
+    parser.add_argument('--tdifflim', type=int, default=-1, help="The maximum frame number away from data to interpolate")
     parser.add_argument('--Kappa', type=float, default=0, help="Using nearest neighbors or TDA")
     parser.add_argument('--filename', default='jumpingjacks2menlowres.ogg', help="video filename")
     parser.set_defaults(median_reorder=False)
@@ -356,7 +378,8 @@ if __name__ == '__main__':
     fileprefix = get_out_fileprefix('reordered', opt.filename, (not opt.median_reorder), opt.weighted_laplacian, opt.net_feat, opt.pyr_level, opt.net_depth, Kappa = opt.Kappa)
     XNew = reorderVideo(I, I_feat, IDims, derivWin = 0, Weighted = opt.weighted_laplacian, \
                         doSimple = (not opt.median_reorder), doPlot = opt.doPlot, Verbose = True, \
-                        doImageAnalogies = opt.image_analogies, fileprefix = fileprefix, Kappa=opt.Kappa)['X']
+                        doImageAnalogies = opt.image_analogies, fileprefix = fileprefix, \
+                        Kappa=opt.Kappa, tdifflim=opt.tdifflim)['X']
     saveVideo(XNew, IDims, fileprefix+".avi")
 
 if __name__ == '__main__2':
