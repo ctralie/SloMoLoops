@@ -1,13 +1,21 @@
-
+*Finish abstract
+*Finish intro, with connections to other methods
+*Edit related work
 *Finish filling in method section for Laplacian, TDA, cycle reordering
-*Figure showing fundamental frequency and circular coordinates in video
-*Robustness experiments
+*Robustness experiments writeup
 *Summarizing video results
 *Image analogies?
 
 Finished:
+*Update block diagram to make clearer
+*XT slice for fan (make fan clearer)
 *Sliding window definitions
 *Write algorithm pseudocode
 *Make concept figure
 *Figure showing XT slice with and without median consensus
 *Appropriate amount of background interleaved in the document
+
+
+
+Skipped:
+*Figure showing fundamental frequency and circular coordinates in video

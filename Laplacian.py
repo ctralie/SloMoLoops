@@ -64,7 +64,7 @@ def getSlowestEigenvectorIdx(v):
             i1 = i
     return (i1, zcs)
 
-def getLapCircularCoordinatesSigma(D, sigma, NEigs = 20, doPlot = False):
+def getLapCircularCoordinatesSigma(D, sigma, NEigs = 10, doPlot = False):
     """
     Get circular coordinates using a weighted laplacian 
     :param pD: Distance matrix
@@ -93,7 +93,7 @@ def getLapCircularCoordinatesSigma(D, sigma, NEigs = 20, doPlot = False):
     (theta, thetau) = getLapThetas(v, i1, i1+1)
     return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
 
-def getLapCircularCoordinatesThresh(pD, thresh, NEigs = 20, doPlot = False):
+def getLapCircularCoordinatesThresh(pD, thresh, NEigs = 10, doPlot = False):
     """
     Get circular coordinates using an unweighted laplacian based
     on binarizing a distance matrix below a certain threshold
@@ -124,7 +124,7 @@ def getLapCircularCoordinatesThresh(pD, thresh, NEigs = 20, doPlot = False):
     (theta, thetau) = getLapThetas(v, i1, i1+1)
     return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
 
-def getLapCircularCoordinatesKNN(D, Kappa, NEigs = 20, doPlot = False):
+def getLapCircularCoordinatesKNN(D, Kappa, NEigs = 10, doPlot = False):
     """
     Get circular coordinates using a weighted laplacian 
     :param pD: Distance matrix
@@ -153,7 +153,7 @@ def getLapCircularCoordinatesKNN(D, Kappa, NEigs = 20, doPlot = False):
     (theta, thetau) = getLapThetas(v, i1, i1+1)
     return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
 
-def getLapCircularCoordinatesKNNWeighted(D, Kappa, NEigs = 20, doPlot = False):
+def getLapCircularCoordinatesKNNWeighted(D, Kappa, NEigs = 10, doPlot = False):
     """
     Get circular coordinates using a weighted laplacian 
     :param pD: Distance matrix

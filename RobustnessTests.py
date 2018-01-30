@@ -168,7 +168,7 @@ def writeBatchHeaderCSV(fout, filename):
 
 def doBatchTests(filename, fout, batchidx = -1):
     idx = 0
-    for NCycles in [3, 5, 10, 20, 30, 50, 70, 100, 200]:
+    for NCycles in [3, 5, 10, 20, 30, 50, 70, 100, 200]: #[3, 5, 10, 15, 20, 25, 30, 40, 50]
         for noise in [0, 1, 2, 3]:
             for shake in [0, 20, 40, 80]:
                 for trial in range(10):
@@ -198,7 +198,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch', type=int, default=0, help="batch")
     parser.add_argument('--nthreads', type=int, default=3, help="Number of threads in parallel pool")
     parser.add_argument('--out_dir', type=str, default=".", help="out directory")
-    parser.add_argument('--videofile', type=str, default='Videos/SlowMotionTemplateHarmonic.avi', help="Template video")
+    parser.add_argument('--videofile', type=str, default='Videos/SlowMotionTemplateSimple.avi', help="Template video")
     parser.add_argument('--NCycles', type=int, default=0, help = "Number of cycles")
     parser.add_argument('--shake', type=int, default=0, help = "Shake by pixels")
     parser.add_argument('--noise', type=float, default=0, help = "AWGN coefficient")

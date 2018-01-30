@@ -202,9 +202,8 @@ def getAllImageSlices(I, IDims, xlims, ylims, line):
         XT.append(F[line, :, :])
     return np.array(XT)
 
-def makeXTSliceSimpleAndMedian():
-    plt.figure(figsize=(6, 5))
-    filename = 'Results/jumpingjacks2menlowres-reordered--%s-unweighted-img-2.avi'
+def makeXTSliceSimpleAndMedianJumpingJacks():
+    plt.figure(figsize=(12, 2))
     [IOrig, _, IDims] = loadImageIOVideo('jumpingjacks2menlowres.ogg')
     xlims = [55, 348]
     ylims = [0, 200]
@@ -213,12 +212,13 @@ def makeXTSliceSimpleAndMedian():
 
     line = 50
     FOrig = getAllImageSlices(IOrig, IDims, xlims, ylims, line)
-    [ISimple, _, _] = loadImageIOVideo(filename%"simple")
+    #NOTE: These videos were done with weighted laplacian
+    [ISimple, _, _] = loadImageIOVideo("Results/JumpingJacks_Simple.avi")
     FSimple = getAllImageSlices(ISimple, IDims, xlims, ylims, line)
-    [IMedian, _, _] = loadImageIOVideo(filename%"median")
+    [IMedian, _, _] = loadImageIOVideo("Results/JumpingJacks_AllMedian.avi")
     FMedian = getAllImageSlices(IMedian, IDims, xlims, ylims, line)
 
-    plt.subplot(221)
+    plt.subplot(141)
     plt.imshow(FRef)
     plt.plot([0, FRef.shape[1]], [line, line], color = [0.7, 0, 0.7])
     plt.axis('equal')
@@ -226,24 +226,59 @@ def makeXTSliceSimpleAndMedian():
     plt.xlabel("X")
     plt.ylabel("Y")
     plt.title("Original Frame")
-    plt.subplot(222)
+    plt.subplot(142)
     plt.imshow(FOrig)
     plt.axis('equal')
     plt.axis('off')
     plt.title("Original Video")
-    plt.subplot(223)
+    plt.subplot(143)
     plt.imshow(FSimple)
     plt.axis('equal')
     plt.axis('off')
     plt.title("Reordered Simple")
-    plt.subplot(224)
+    plt.subplot(144)
     plt.imshow(FMedian)
     plt.axis('equal')
     plt.axis('off')
     plt.title("Reordered Median")
-    plt.savefig("Paper/Figures/XTSlice.svg", bbox_inches = 'tight')
+    plt.savefig("Paper/Figures/XTSliceJumpingJacks.svg", bbox_inches = 'tight')
 
+
+def makeXTSliceFan():
+    plt.figure(figsize=(9, 3))
+    [IOrig, _, IDims] = loadImageIOVideo('Videos/Fan4_6FramesPerPeriod.avi')
+    xlims = [40, IDims[1]-40]
+    ylims = [10, IDims[0]]
+    FRef = np.reshape(IOrig[0, :], IDims)
+    FRef = FRef[ylims[0]:ylims[1], xlims[0]:xlims[1], :]
+
+    line = 150
+    FOrig = getAllImageSlices(IOrig, IDims, xlims, ylims, line)
+    #NOTE: This was done with weighted laplacian
+    [IMedian, _, _] = loadImageIOVideo("Results/Fan_MedianClose4.avi")
+    FMedian = getAllImageSlices(IMedian, IDims, xlims, ylims, line)
+
+    plt.subplot(141)
+    plt.imshow(FRef)
+    plt.plot([0, FRef.shape[1]], [line, line], color = [0.7, 0, 0.7])
+    plt.axis('equal')
+    plt.axis('off')
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.title("Original Frame")
+    plt.subplot(142)
+    plt.imshow(FOrig, aspect = 'auto')
+    #plt.axis('equal')
+    plt.axis('off')
+    plt.title("Original Video")
+    plt.subplot(133)
+    plt.imshow(FMedian, aspect = 'auto')
+    #plt.axis('equal')
+    plt.axis('off')
+    plt.title("Reordered Median")
+    plt.savefig("Paper/Figures/XTSliceFan.svg", bbox_inches = 'tight')
 
 if __name__ == '__main__':
-    ReorderingExample1D(0)
-    #makeXTSliceSimpleAndMedian()
+    #ReorderingExample1D(0)
+    #makeXTSliceSimpleAndMedianJumpingJacks()
+    makeXTSliceFan()
