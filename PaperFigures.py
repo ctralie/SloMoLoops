@@ -43,6 +43,69 @@ def getSlidingWindow(x, dim, Tau, dT):
 def MSE(x1, x2):
     return np.mean((x1-x2)**2)
 
+def getCirculantMatrix(c):
+    N = len(c)
+    A = np.zeros((N, N))
+    for i in range(N):
+        A[i] = np.roll(c, i)
+    return A
+
+def makeCirculantExample():
+    
+    #First do a synthetic example
+    T = 14
+    k = 6
+    N = k*T
+    c = np.zeros(N)
+    c[np.arange(k)*T+1] = 1
+    c[np.arange(k)*T] = 1
+    c[np.arange(k)*T-1] = 1
+    c[0] = 0
+    A = getCirculantMatrix(c)
+    w, v, L = getLaplacianEigsDense(A, A.shape[0])
+
+    plt.figure(figsize=(12, 6))
+    plt.subplot(241)
+    plt.imshow(1-A, interpolation = 'nearest', cmap = 'gray')
+    plt.title("Ideal Adj Matrix")
+    plt.xlabel("Sliding Window Frame")
+    plt.ylabel("Sliding Window Frame")
+    plt.subplot2grid((2, 4), (0, 1), colspan = 2)
+    plt.plot(v[:, 1:3])
+    plt.xlabel("Sliding Window Frame")
+    plt.title("Ideal Laplacian Eigenvectors")
+    plt.legend(['eig1', 'eig2'])
+    plt.subplot(244)
+    plt.scatter(v[:, 1], v[:, 2])
+    plt.axis('equal')
+    plt.title("Joint Plot Ideal")
+    plt.xlabel("eig 1")
+    plt.ylabel("eig 2")
+
+    #Now do an example in real video
+    I, I_feat, IDims = loadImageIOVideo('jumpingjacks2menlowres.ogg')
+    res = reorderVideo(I, I_feat, IDims, doSimple = True, Weighted = False, doPlot = False)
+    [v, A] = [res['v'], res['A']]
+    plt.subplot(245)
+    plt.imshow(1-A, interpolation = 'nearest', cmap = 'gray')
+    plt.title("Jumping SW Adj Matrix")
+    plt.xlabel("Sliding Window Frame")
+    plt.ylabel("Sliding Window Frame")
+    plt.subplot2grid((2, 4), (1, 1), colspan = 2)
+    plt.plot(v[:, 1:3])
+    plt.xlabel("Sliding Window Frame")
+    plt.title("Jumping Jacks Laplacian Eigenvectors")
+    plt.legend(['eig1', 'eig2'])
+    plt.subplot(248)
+    plt.scatter(v[:, 1], v[:, 2])
+    plt.axis('equal')
+    plt.title("Joint Plot Jumping Jacks")
+    plt.xlabel("eig 1")
+    plt.ylabel("eig 2")
+    
+    plt.tight_layout()
+    plt.savefig("Paper/Figures/CirculantExample.svg", bbox_inches = 'tight')
+
 def ReorderingExample1D(seed):
     NPeriods = 20
     SamplesPerPeriod = 12
@@ -281,4 +344,5 @@ def makeXTSliceFan():
 if __name__ == '__main__':
     #ReorderingExample1D(0)
     #makeXTSliceSimpleAndMedianJumpingJacks()
-    makeXTSliceFan()
+    #makeXTSliceFan()
+    makeCirculantExample()

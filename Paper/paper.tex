@@ -63,7 +63,7 @@ One, two, three, four, five
 \section{Introduction}
 %Background, drift, noise, large motion, static pixels, scale finding, overall automation [fundamental frequency, etc].  Sliding window "time regularization"
 
-Repetitive, periodic motions are ubiquitous in our world, such as animal locomotion (walking/flapping/slithering/swimming), mechanical motions (wheels spinning, pistons oscillating), biological rhythms (heartbeat, breathing), musical rhythms (drumming, feet tapping), etc.  In this work, we consider the problem of synthesizing a fine detail, ``slow motion'' template cycle of motion from a video of such a motion with many periods.  This fine detailed analysis can be applied, for example, to characterize subtle progressions of blood flow in the face during a heartbeat \cite{kumar2015distanceppg}.  Having access to a consensus template can also be used to visualize variations from cycle to cycle, such as in a repetitive automated action on an assembly line, where too much variation could indicate the onset of failure (TODO: citation), or in athletic activities for optimizing performance.
+Repetitive, periodic motions are ubiquitous in our world, such as animal locomotion (walking/flapping/slithering/swimming), mechanical motions (wheels spinning, pistons oscillating), biological rhythms (heartbeat, breathing), musical rhythms (drumming, feet tapping), etc.  In this work, we consider the problem of synthesizing a fine detail, ``slow motion'' template cycle of motion from a video of such a motion with many periods.  This fine detailed analysis can be applied, for example, to characterize subtle progressions of blood flow in the face during a heartbeat \cite{kumar2015distanceppg}.  Having access to a consensus template can also be used to visualize variations from cycle to cycle, such as in a repetitive automated action on an assembly line, where too much variation could indicate the onset of failure, in repetitive human motions to assess the stress of those motions \cite{greene2017visualizing}, and in athletic activities for optimizing performance.
 
 Our approach to slow motion templates is {\em Eulerian}; that is, we process the video pixel by pixel with no tracking.  Eulerian approaches for video synthesis are attractive due to their simplicity and ease of implementation.  For instance, a simple Fourier bandpass filtering and amplifying pixels can successfully elucidate subtle periodic motions in videos \cite{wu2012eulerian, wadhwa2013phase}.  Additionally, time domain Eulerian approaches have been used to synthesize infinitely playing ``video textures'' using random walks \cite{schodl2000video}, or to synthesize perfectly looping video templates after grouping pixels with similar periods together and devising a common period for all groups \cite{Liao2013VideoLoops,Liao2015VideoLoops}.  There are some pitfalls with Eulerian techniques, however.  Purely Eulerian amplification techniques are known to fail for large motions, and they also require the user to manually specify frequencies of interest \cite{wu2012eulerian, wadhwa2013phase}.  Furthermore, drift from period to period due to shaking and varying motions from cycle to cycle can present a problem, as can unrelated motion in the background \cite{stauffer1999adaptive}.
 
@@ -76,10 +76,10 @@ Many prior works use a combination of sliding window embeddings and topological 
 \section{Slow Motion Templates}
 \label{sec:methods}
 
-\begin{figure*}
+\begin{figure*}[h!]
 \centering
 \includegraphics[width=\textwidth]{BlockDiagram.pdf}
-\caption{An block diagram of our technique, illustrated by a 1D periodic time series with additive Gaussian noise ($n_t \in \mathcal{N}(0, 1)$).  We estimate the period to be 24 (a multiple of the fundamental frequency), and perform a 24-length sliding window embedding.  From this, we use the mean of the birth and death time of the largest persistence dot to autotune the scale $\sigma$ for the graph Laplacian, from which we derive circular coordinates $\phi$, which can be used to reorder the sliding windows and use them to vote on a final slow motion template.  The result is shown in the bottom rightmost plot, superimposed with a ground truth period shows as an orange dotted line.}
+\caption{An block diagram of our technique, illustrated by a 1D periodic time series with additive Gaussian noise ($n_t \in \mathcal{N}(0, 1)$).  We estimate the period to be 24 (a multiple of the fundamental frequency), and perform a 24-length sliding window embedding.  From this, we use the mean of the birth and death time of the largest persistence dot to autotune the scale $\sigma$ for the graph Laplacian, from which we derive circular coordinates $\phi$, which can be used to reorder the sliding windows and use them to vote on a final slow motion template.  The result is shown in the bottom rightmost plot, superimposed with a ground truth period shown as an orange dotted line.}
 \label{fig:ConceptFigure}
 \end{figure*}
 
@@ -93,13 +93,20 @@ We now describe our algorithm in several stages.  Throughout our discussion, we 
 Given a $W \times H$ video $X(t) \in \mathbb{R}^{3WH}$ indexed by time, the sliding window video embedding \cite{cao1998dynamics,traliehigh,tralie2017quasi} is defined as
 
 \begin{equation}
-SW_{d, \tau}[X(t)] = \left[ \begin{array}{c} X(t) \\ X(t + \tau) \\ \vdots \\ X(t + (d-1)\tau)  \end{array} \right] \in \mathbb{R}^{3WHd}
+SW_{\text{dim}, \tau}[X(t)] = \left[ \begin{array}{c} X(t) \\ X(t + \tau) \\ \vdots \\ X(t + (\text{dim}-1)\tau)  \end{array} \right] \in \mathbb{R}^{3WH(\text{dim})}
 \end{equation}
 
-where $\tau$ is a step size and $d$ is the dimension of the embedding.  In this work, we fix $\tau = 1$ for simplicity and drop $\tau$ in the subscript, and we also sample times $t$ only at integer frame indices.  As shown by Takens \cite{takens1981detecting}, a sliding window of dimension $d = 2m+1$ of even a single generic observation function (time series) of a dynamical system of intrinsic dimension $m$ is sufficient to reconstruct a topological embedding of the underlying trajectory in the original state space.  For periodic signals, this state space is a torus, and $d$ should be twice the number of harmonics present to injectively reconstruct loops on that torus \cite{perea2015sliding}.  The same is true of videos in general \cite{tralie2017quasi}.  Furthermore, the sliding window length $(d-1) \tau$, or simply $d-1$ in our case, maximizes the roundness of the embeddings when $d-1 = k T$ for some integer $k$, where $T$ is the fundamental period.  Since we will use topological data analysis (TDA) to find the scale of the loop, and since TDA measures roundness, it is important that we tune our window size to be an integer multiple of the period.  To do this, we perform 1D ISOMAP \cite{tenenbaum2000global} on the original frames of the video to generate a 1D ``surrogate signal,'' and we perform an autocorrelation-based fundamental frequency estimation \cite{Mcleod05asmarter} on this signal to estimate the period and, hence, the appropriate $d$.  This is quite similar to the diffusion maps + autocorrelation approach in \cite{tralie2017quasi} for analyzing periodic videos.  This estimation often returns integer multiples of the fundamental period, which is fine for our purposes.
+where $\tau$ is a step size and ``dim'' is the dimension of the embedding.  In this work, we fix $\tau = 1$ for simplicity and drop $\tau$ in the subscript, and we also sample times $t$ only at integer frame indices.  As shown by Takens \cite{takens1981detecting}, a sliding window of dimension $2m+1$ of even a single generic observation function (time series) of a dynamical system of intrinsic dimension $m$ is sufficient to reconstruct a topological embedding of the underlying trajectory in the original state space.  For periodic signals, this state space is a torus, and $d$ should be twice the number of harmonics present to injectively reconstruct loops on that torus \cite{perea2015sliding}.  The same is true of videos in general \cite{tralie2017quasi}.  Furthermore, the sliding window length $(\text{dim}-1) \tau$, or simply $\text{dim}-1$ in our case, maximizes the roundness of the embeddings when $\text{dim}-1 = k T$ for some integer $k$, where $T$ is the fundamental period.  Since we will use topological data analysis (TDA) to find the scale of the loop, and since TDA measures roundness, it is important that we tune our window size to be an integer multiple of the period.  To do this, we perform 1D ISOMAP \cite{tenenbaum2000global} on the original frames of the video to generate a 1D ``surrogate signal,'' and we perform an autocorrelation-based fundamental frequency estimation \cite{Mcleod05asmarter} on this signal to estimate the period and, hence, the appropriate dim.  This is quite similar to the diffusion maps + autocorrelation approach in \cite{tralie2017quasi} for analyzing periodic videos.  This estimation often returns integer multiples of the fundamental period, which is fine for our purposes.
 
-\subsection{Laplacian Eigenmaps And Persistent Homology}
+\subsection{Laplacian Eigenmaps}
 \label{sec:laplacian}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=\columnwidth]{CirculantExample.pdf}
+\caption{An example of the unweighted graph Laplacian on an ideal adjacency matrix corresponding to 6 periods of length 14 (top row), and the adjacency matrix from a sliding window embedding of two men doing jumping jacks (bottom row).  The two eigenvectors corresponding the smallest nonzero eigenvalues of the graph Laplacian span sinusoids that are 90 degrees out of phase, and which reconstruct a circle when plotted against each other.}
+\label{fig:CirculantExample}
+\end{figure}
 
 Since sliding window embeddings of periodic videos lie on a topological loop (a manifold which is an ``intrinsic circle''), this means that, at an appropriate scale, a nearest neighbors graph built on the sliding window point cloud will approximately be a circle graph.  To parameterize this graph, we turn to the graph Laplacian \cite{chung1997spectral}.  For a graph $G$ with $N$ vertices and an $N \times N$ symmetric adjacency matrix $A$, the graph Laplacian is defined as
 \begin{equation}
@@ -111,21 +118,17 @@ where $D_{ii} = \sum_{j = 1}^N A_{ij}, D_{i \neq j} = 0$ is the diagonal matrix.
 A_{\epsilon}^u(d)_{ij} = \left\{ \begin{array}{cc} 1 & i \neq j, d_{ij} \leq \epsilon \\ 0 & \text{otherwise} \end{array} \right\}
 \end{equation}
 
-For a circle graph, where the $A_{ij} = 1$ if $|i-j| = 1$, $i=1, j=N$, and $j=1, i=N$, or zero otherwise, the eigenvectors spanning the image of the graph laplacian are 
+Now suppose we have performed a sliding window $SW_{\text{dim}}[X[n]]$ for a video $X$, where $X[n] = X[n+kT]$ for some integers $l, k$ so that there are $kT$ points in the sliding window (that is, $X$ repeats itself exactly every $T$ frames $k$ times total), and that $d_{ij} = ||SW_{\text{dim}}[X[i]] - SW_{\text{dim}}[X[n]]||_2$.  In this case, for any $\epsilon > 0$ and $|i - j| = kT$ for some integer $k$, $A_{ij} = 1$.
 
-\begin{equation}
-v_{2k}[n] = \cos(2 \pi k n / N), v_{2k-1}[n] = \sin(2 \pi k n / N), k \geq 1
-\end{equation}
-
-%In other words, the graph Laplacian of an $N$-point circle graph recovers the $N$-dimensional discrete Fourier transform.
-
-with corresponding eigenvalues $\lambda_k = 2 - 2 \cos(2 \pi k / N)$ (and $\lambda_0 = 0$ with corresponding eigenvector $v_0[n] = 1$).  When computing the eigenvectors of a circle graph numerically, therefore, $v_1$ and $v_2$ should be a sine and cosine, or orthogonal linear combinations therein.
-
-TODO: Talk about circulant graphs instead
 
 
 
 which means the first two nonzero eigenvectors should be a sine and cosine, or orthogonal linear combinations therein.  When plotted against each other, they make an approximate circle, and the arctangent of the two eigenvector coordinates at every window can be used to determine the {\em phase} of the corresponding window in the periodic signal.  The first sample of each window can then be re-sorted by phase.
+
+
+In practice, look for the pair of eigenvectors within the first 10 with smallest zerocrossings
+
+\subsection{Persistent Homology}
 
 Talk about autotuning with peristent homology, mention that it's the opposite of the approach in \cite{bendich2011improving}
 
@@ -140,10 +143,6 @@ Advantage of Eulerian is that everything is linear (can use SVD to compress)
 
 Interpolated windows can be projected back to pixel space one by one to save memory
 
-\subsection{Sharpening Postprocessing}
-
-The results of the median reordering can be blurry
-
 
 \section{Experiments}
 
@@ -151,14 +150,14 @@ The results of the median reordering can be blurry
 Robustness experiments
 
 \subsection{Qualitative Results}
-\begin{figure}[h!]
+\begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{XTSliceJumpingJacks.pdf}
 \caption{An XT slice of a line of pixels (magenta line, upper left) over time for an input video of two men doing jumping jacks and for reordered videos with and without median consensus.}
 \label{fig:XTSliceJumpingJacks}
 \end{figure}
 
-\begin{figure}[h!]
+\begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{XTSliceFan.pdf}
 \caption{An XT slice of a line of pixels (magenta line, upper left) over time for an input video of a fan with only 6 frames per period and the corresponding median consensus reordered video.}

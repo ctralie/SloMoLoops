@@ -337,7 +337,7 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         else:
             XRet = getReorderedConsensusVideo(X_proj, IDims, Mu_orig, VT_orig, dim, thetau, \
                 doPlot=doPlot, Verbose=Verbose, lookAtVotes = False, tdifflim = tdifflim)
-    return {'X':XRet, 'IDims':IDims, 'theta':theta, 'thetau':thetau}
+    return {'X':XRet, 'IDims':IDims, 'theta':theta, 'thetau':thetau, 'A':A, 'v':v}
 
 def get_out_fileprefix(base_filename, inputfilename, do_simple, is_weighted, \
                         is_net_feat, pyr_level=0, layer=0, Kappa=0):

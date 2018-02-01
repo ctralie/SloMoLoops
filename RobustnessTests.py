@@ -105,7 +105,6 @@ def doTest(filename, NCycles, noise, shake, fileprefix = "", Verbose = False, sa
     if len(fileprefix) > 1:
         doPlot = True
     doSimple = True
-    #Range over: Period, Noise Amount, Shake Amount
     res = getCycles(NCycles = NCycles, filename = filename)
     [I, IDims, thetagt] = [res['I'], res['IDims'], res['theta']]
     I += noise*np.random.randn(I.shape[0], I.shape[1])
@@ -114,7 +113,7 @@ def doTest(filename, NCycles, noise, shake, fileprefix = "", Verbose = False, sa
     if saveVideos:
         saveVideo(I, IDims, "%s_simulated.avi"%fileprefix)
     ret = {}
-    for pyr_level in range(-2, 4):
+    for pyr_level in [3]:#range(-2, 4):
         if Verbose:
             print("pyr_level = %i"%pyr_level)
         if pyr_level >= 0:
@@ -123,7 +122,7 @@ def doTest(filename, NCycles, noise, shake, fileprefix = "", Verbose = False, sa
             depth = -pyr_level - 1
             I_feat = getVideoResNet(I, IDims, depth)
         for Kappa in [0, 0.05, 0.1, 0.15]:
-            for Weighted in [True, False]:
+            for Weighted in [False]:
                 for doSlidingWindow in [True, False]:
                     thisprefix = "%i_%i_%g_%i"%(doSlidingWindow, pyr_level, Kappa, Weighted)
                     res = reorderVideo(I, I_feat, IDims, derivWin = 0, Weighted = Weighted, \
@@ -168,19 +167,18 @@ def writeBatchHeaderCSV(fout, filename):
 
 def doBatchTests(filename, fout, batchidx = -1):
     idx = 0
-    for NCycles in [3, 5, 10, 20, 30, 50, 70, 100, 200]: #[3, 5, 10, 15, 20, 25, 30, 40, 50]
-        for noise in [0, 1, 2, 3]:
-            for shake in [0, 20, 40, 80]:
-                for trial in range(10):
-                    if idx == batchidx:
-                        np.random.seed(idx)
-                        ret = doTest(filename, NCycles, noise, shake, Verbose = True)
-                        for item in ret:
-                            fout.write("%i,%g,%i,%i,"%(NCycles, noise, shake, trial))
-                            fout.write(("%s,"*4)%tuple(item.split("_")))
-                            fout.write(("%g,%g\n")%tuple(ret[item]))
-                            fout.flush()
-                    idx += 1
+    for NCycles in [3, 5, 10, 15, 20, 25, 30, 40, 50]:
+        for (noise, shake) in [(0, 0), (1, 0), (2, 0), (0, 20), (0, 40), (0, 80)]:
+            for trial in range(50):
+                if idx == batchidx:
+                    np.random.seed(idx)
+                    ret = doTest(filename, NCycles, noise, shake, Verbose = True)
+                    for item in ret:
+                        fout.write("%i,%g,%i,%i,"%(NCycles, noise, shake, trial))
+                        fout.write(("%s,"*4)%tuple(item.split("_")))
+                        fout.write(("%g,%g\n")%tuple(ret[item]))
+                        fout.flush()
+                idx += 1
 
 def doBatch(args):
     (filename, outdir, batchidx) = args
@@ -198,7 +196,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch', type=int, default=0, help="batch")
     parser.add_argument('--nthreads', type=int, default=3, help="Number of threads in parallel pool")
     parser.add_argument('--out_dir', type=str, default=".", help="out directory")
-    parser.add_argument('--videofile', type=str, default='Videos/SlowMotionTemplateSimple.avi', help="Template video")
+    parser.add_argument('--videofile', type=str, default='Videos/SlowMotionTemplateCrowd.avi', help="Template video")
     parser.add_argument('--NCycles', type=int, default=0, help = "Number of cycles")
     parser.add_argument('--shake', type=int, default=0, help = "Shake by pixels")
     parser.add_argument('--noise', type=float, default=0, help = "AWGN coefficient")
