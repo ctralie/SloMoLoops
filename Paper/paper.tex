@@ -67,10 +67,10 @@ Repetitive, periodic motions are ubiquitous in our world, such as animal locomot
 
 Our approach to slow motion templates is {\em Eulerian}; that is, we process the video pixel by pixel with no tracking.  Eulerian approaches for video synthesis are attractive due to their simplicity and ease of implementation.  For instance, a simple Fourier bandpass filtering and amplifying pixels can successfully elucidate subtle periodic motions in videos \cite{wu2012eulerian, wadhwa2013phase}.  Additionally, time domain Eulerian approaches have been used to synthesize infinitely playing ``video textures'' using random walks \cite{schodl2000video}, or to synthesize perfectly looping video templates after grouping pixels with similar periods together and devising a common period for all groups \cite{Liao2013VideoLoops,Liao2015VideoLoops}.  There are some pitfalls with Eulerian techniques, however.  Purely Eulerian amplification techniques are known to fail for large motions, and they also require the user to manually specify frequencies of interest \cite{wu2012eulerian, wadhwa2013phase}.  Furthermore, drift from period to period due to shaking and varying motions from cycle to cycle can present a problem, as can unrelated motion in the background \cite{stauffer1999adaptive}.
 
-To address the problems with an Eulerian representation, we devise a geometric/topological Eulerian framework byconstructing {\em sliding window embeddings} of our videos (Section~\ref{sec:slidingwindow}).  Sliding window embeddings, or ``delay reconstructions,'' have found a diverse array of applications in activity recognition \cite{frank2010activity,venkataraman2016shape}, gene expression data \cite{perea2015sw1pers}, EEG analysis \cite{stam2005nonlinear, plesnik2014detection}, audio and music analysis \cite{herzel1994analysis,serra2009cross,bello2011measuring,traliemoebius}, video analysis \cite{tralie2017quasi}, and motion capture analysis \cite{venkataraman2016shape}.  Sliding window embeddings of periodic time series, in particular, form samples of a topological loop \cite{perea2015sliding}, as do generalized multivariate sliding windows on periodic video data, regardless of the type of motion present \cite{traliehigh, tralie2017quasi}.  Furthermore, as shown by the authors of \cite{tralie2017quasi}, sliding window embeddings on Eulerian videos provide a sort of ``time regularization,'' which can mitigate the effects of drift, leading to a cleaner loop.  Our geometric framework also allows us to use topological data analysis \cite{edelsbrunner2000topological,edelsbrunner2008persistent,edelsbrunner2010computational,carlsson2009topology,ghrist2014elementary} and fundamental frequency estimation \cite{Mcleod05asmarter} to autotune the temporal and spatial scales of the periodic motion, respectively, so that no user intervention is required.  Our embedding also makes it easy to assign each window a circular phase $\phi \in [0, 2\pi]$ using Laplacian Eigenmaps \cite{belkin2003laplacian}.  We then re-order the sliding windows by $\phi$ and exploit the sliding window structure to have different windows vote on the final pixels in each frame of the template, which further mitigates drift (Section~\ref{sec:cyclereordering}).  As an illustration, Figure~\ref{fig:ConceptFigure} shows an example of our technique on a sampled periodic time series (i.e. single pixel grayscale video).  There are only 12 samples per period in the original signal, so the details of each period coarse and noisy.  However, once they are re-sorted, we get a nice, fine-detailed representation of one period.  The extension of this technique to videos will be described in detail in Section~\ref{sec:methods}.
+To address the problems with an Eulerian representation, we devise a geometric/topological Eulerian framework byconstructing {\em sliding window embeddings} of our videos (Section~\ref{sec:slidingwindow}).  Sliding window embeddings, or ``delay reconstructions,'' have found a diverse array of applications in activity recognition \cite{frank2010activity,venkataraman2016shape}, gene expression data \cite{perea2015sw1pers}, EEG analysis \cite{stam2005nonlinear, plesnik2014detection}, audio and music analysis \cite{herzel1994analysis,serra2009cross,bello2011measuring,traliemoebius}, video analysis \cite{tralie2017quasi}, and motion capture analysis \cite{venkataraman2016shape}.  Sliding window embeddings of periodic time series, in particular, form samples of a topological loop \cite{perea2015sliding}, as do generalized multivariate sliding windows on periodic video data, regardless of the type of motion present \cite{traliehigh, tralie2017quasi}.  Furthermore, as shown by the authors of \cite{tralie2017quasi}, sliding window embeddings on Eulerian videos provide a sort of ``time regularization,'' which can mitigate the effects of drift, leading to a cleaner loop.  Our geometric framework also allows us to use topological data analysis \cite{edelsbrunner2000topological,edelsbrunner2008persistent,edelsbrunner2010computational,carlsson2009topology,ghrist2014elementary} and fundamental frequency estimation \cite{Mcleod05asmarter} to autotune the spatial and temporal scales of the periodic motion, respectively, so that no user intervention is required.  Our embedding also makes it easy to assign each window a circular phase $\phi \in [0, 2\pi]$ using Laplacian Eigenmaps \cite{belkin2003laplacian}.  We then re-order the sliding windows by $\phi$ and exploit the sliding window structure to have different windows vote on the final pixels in each frame of the template, which further mitigates drift (Section~\ref{sec:cyclereordering}).  As an illustration, Figure~\ref{fig:ConceptFigure} shows an example of our technique on a sampled periodic time series (i.e. single pixel grayscale video).  There are only 12 samples per period in the original signal, so the details of each period coarse and noisy.  However, once they are re-sorted, we get a nice, fine-detailed representation of one period.  The extension of this technique to videos will be described in detail in Section~\ref{sec:methods}.
 
 
-Many prior works use a combination of sliding window embeddings and topological data analysis, such as detecting the Lorenz attractor \cite{de2012topological}, quantifying circadian rhythms in gene expression data \cite{perea2015sliding}, detecting chatter in mechanical systems \cite{khasawneh2016chatter}, detecting wheezing in audio \cite{emrani2014real}, quantifying periodic activites in motion capture data \cite{vejdemo2015cohomological, venkataraman2016persistent}, and quantifying vocal fold anomalies in video \cite{tralie2017quasi}, though we believe we are the first to use a sliding window + TDA framework to {\em synthesize} a new result.  Our use of the graph Laplcian to parameterize time series is also unique, though we are inspired by works that have used it to re-arrange images around a loop as a pre-processing step for structure from motion \cite{averbuch2015ringit}, and works which use vector diffusion maps to re-order the frames of microscope images a developing embryo around a loop \cite{dsilva2015diffusionvecordering}.  One can also view the combination of TDA + Laplacian eigenmaps as a simple alternative to cohomology circular coordinates \cite{de2011persistent,vejdemo2015cohomological} in the special case of periodic data.
+Many prior works use a combination of sliding window embeddings and topological data analysis, such as detecting the Lorenz attractor \cite{de2012topological}, quantifying circadian rhythms in gene expression data \cite{perea2015sliding}, detecting chatter in mechanical systems \cite{khasawneh2016chatter}, detecting wheezing in audio \cite{emrani2014real}, quantifying periodic activites in motion capture data \cite{vejdemo2015cohomological, venkataraman2016persistent}, and quantifying vocal fold anomalies in video \cite{tralie2017quasi}, though we believe we are the first to use a sliding window + TDA framework to {\em synthesize} a new result.  Our use of the graph Laplcian to parameterize time series is also unique, though we are inspired by works that have used it to re-arrange images around a loop as a pre-processing step for structure from motion \cite{averbuch2015ringit}, and works which use vector diffusion maps to re-order the frames of microscope images a developing embryo around a loop \cite{dsilva2015diffusionvecordering}.  One can also view the combination of TDA + Laplacian eigenmaps as a simpler alternative to cohomology circular coordinates \cite{de2011persistent,vejdemo2015cohomological} for the special case of periodic data.  It is also the opposite of the approach in \cite{bendich2011improving}, which performs diffusion maps before TDA.
 
 
 \section{Slow Motion Templates}
@@ -113,41 +113,36 @@ Since sliding window embeddings of periodic videos lie on a topological loop (a 
 \begin{equation}
 L = D-A
 \end{equation}
-where $D_{ii} = \sum_{j = 1}^N A_{ij}, D_{i \neq j} = 0$ is the diagonal matrix.  Now let $d_{ij}: V \rightarrow \mathbb{R}^+$ be a nonnegative scalar function on the vertices of $G$.  Then the adjacency matrix correponding to the {\em unweighted} graph Laplacain, $A_{\epsilon}^u(d)$, is
+where $D_{ii} = \sum_{j = 1}^N A_{ij}, D_{i \neq j} = 0$ is the diagonal matrix.  Now let $d_{ij}: V \rightarrow \mathbb{R}^+$ be a nonnegative scalar function on the vertices of $G$.  Then the adjacency matrix correponding to the unweighted graph Laplacain, $A_{\epsilon}^u(d)$, is
 
 \begin{equation}
 A_{\epsilon}^u(d)_{ij} = \left\{ \begin{array}{cc} 1 & i \neq j, d_{ij} \leq \epsilon \\ 0 & \text{otherwise} \end{array} \right\}
 \end{equation}
 
-Now suppose we have performed a sliding window $SW_{\text{dim}}[X[n]]$ for a video $X$, where $X[n] = X[n+kT]$ for some integers $l, k$ so that there are $kT$ points in the sliding window (that is, $SW_{\text{dim}}[X[i]]$ repeats itself exactly every $T$ frames $k$ times total, for a total of $N = kT$ windows), and that $d_{ij} = ||SW_{\text{dim}}[X[i]] - SW_{\text{dim}}[X[j]]||_2$.  In this case, for any $\epsilon > 0$ and $|i - j| = kT$ for some integer $k$, $A^u_{\epsilon}(d)_{ij} = 1$.  Let us further suppose it is possible to choose an $\epsilon$ so that each window is connected to the window directly before and after it in time, as well as the windows directly before and after its repetitions, but none others; that is, the unweighted adjacency matrix is a symmetric, {\em circulant matrix}, with the first row $A_{\epsilon}^u(d)_{1j} = 1$ if $j = 1, N-1,$ or $lT, 1 \leq l \leq (k-1)$.  Thus, the Laplacian is also circulant with first row
+Alternatively, the weighted adjacency matrix is defined as $A_{\epsilon}^w(d)_{ij} = \exp(-d_{ij}^2/\epsilon)$ \cite{belkin2003laplacian}, but everything else is the same.  Now suppose we have performed a sliding window $SW_{\text{dim}}[X[n]]$ for a video $X$, where $X[n] = X[n+kT]$ for some integers $l, k$ so that there are $kT$ points in the sliding window (that is, $SW_{\text{dim}}[X[i]]$ repeats itself exactly every $T$ frames $k$ times total, for a total of $N = kT$ windows), and that $d_{ij} = ||SW_{\text{dim}}[X[i]] - SW_{\text{dim}}[X[j]]||_2$.  In this case, for any $\epsilon > 0$ and $|i - j| = kT$ for some integer $k$, $A^u_{\epsilon}(d)_{ij} = 1$.  Let us further suppose it is possible to choose an $\epsilon$ so that each window is also connected to the window directly before and after it in time, as well as the windows directly before and after its repetitions, but none others; that is, the unweighted adjacency matrix is a symmetric, {\em circulant matrix}, with the first row $A_{\epsilon}^u(d)_{1j} = 1$ if $j = 1, N-1,$ or $lT, 1 \leq l \leq (k-1)$.  Thus, the Laplacian is also circulant with first row
 
 \begin{equation}
 \label{eq:modellaplacian}
 L_{1j} = \left\{ \begin{array}{cc} 3k-1 & j = 1 \\ -1 & j = lT, 1 \leq l \leq (k-1) \\ -1 & j = 1, N-1 \\ 0 & \text{otherwise} \end{array} \right\}
 \end{equation}
 
-Circulant matrices are diagonalized by the Discrete Fourier Transform \cite{godsil2013algebraic}, and their eigenvalues come in pairs with multiplicity two, with corresopnding eigenvectors $v_1[n] = 1$, $v_{2m}[n] = \cos(2 \pi mn / N)$, $v_{2m+1}[n] = \sin(2 \pi m n / N)$, $m \geq 1$.  In the case of Equation~\ref{eq:modellaplacian}, it can be shown using the DFT that the eigenvalues are $\lambda_1 = 0$ and 
+Circulant matrices are diagonalized by the Discrete Fourier Transform \cite{godsil2013algebraic}, and their nonzero eigenvalues come in pairs with multiplicity two, with corresopnding eigenvectors $v_1[n] = 1$, $v_{2m}[n] = \cos(2 \pi mn / N)$, $v_{2m+1}[n] = \sin(2 \pi m n / N)$, $m \geq 1$.  In the case of Equation~\ref{eq:modellaplacian}, it can be shown using the DFT that the eigenvalues are $\lambda_1 = 0$ and 
 
 \begin{equation}
 \begin{array}{cc}\lambda_{2m},\\\lambda_{2m+1}\end{array} = \left\{ \begin{array}{cc} 3k - k\left( 1 + 2 \cos \left( \frac{2 \pi}{kT} m \right) \right) & m = lk, l \in \mathbb{Z}^+ \\ 3k & \text{otherwise}  \end{array} \right\} 
 \end{equation}
 
-The smallest two nonzero eigenvalues occur when $m = k$, corresponding to the eigenvectors $v_{2k} = \cos(2 \pi n / T), v_{2k+1} = \sin(2 \pi n / T)$
+The smallest two nonzero eigenvalues occur when $m = k$, corresponding to the eigenvectors \footnote{This generalizes the circle graph used in \cite{averbuch2015ringit}, in which $T = N, k = 1$} 
+\begin{equation}
+v_{2k}[n] = \cos(2 \pi n / T), v_{2k+1}[n] = \sin(2 \pi n / T)
+\end{equation}
+When computing the smallest two nonzero eigenvalues numerically, therefore, one coresponds to a sinusoid with period $T$, and the other to an orthogonal sinusoid with period $T$.  When plotted against each other, they form a circle, with an arbitrary phase offset.  Therefore, we compute the circular phase numerically $\phi = \tan^{-1}(\hat{v_1}[n] / \hat{v_2}[n])$, where $\hat{v_i}$ is the eigenvector corresponding to the $i^\text{th}$ smallest nonzero numerical eigenvalue.  In practice, the graphs we get from sliding window may deviate from the ideal Laplacian model in Equation~\ref{eq:modellaplacian}, though they do so gracefully.  Figure~\ref{fig:CirculantExample} shows an example of $\hat{v_1}[n]$ and $\hat{v_2}[n]$ for an ideal graph and for an imperfect graph corresponding to the sliding window embedding of a real video.  
 
-
-
-
-
-which means the first two nonzero eigenvectors should be a sine and cosine, or orthogonal linear combinations therein.  When plotted against each other, they make an approximate circle, and the arctangent of the two eigenvector coordinates at every window can be used to determine the {\em phase} of the corresponding window in the periodic signal.  The first sample of each window can then be re-sorted by phase.
-
-
-In practice, look for the pair of eigenvectors within the first 10 with smallest zerocrossings
+Note that for both the unweighted and weighted cases in practice, we have observed that harmonics of the actual frequency of interest occasionally have smaller eigenvalues.  To mitigate this, we use the pair of eigenvectors with the smallest number of zero crossings within the eigenvectors corresponding to the 10 smallest nonzero eigenvalues.
 
 \subsection{Persistent Homology}
-
-Talk about autotuning with peristent homology, mention that it's the opposite of the approach in \cite{bendich2011improving}
-
-Talk about how it can pick up on harmonics (e.g. jumping jacks), which is why this is important (talk about using prime 49)
+Our discussion so far has assumed we can find the appropriate $\epsilon$ for the (un)weighted graph Laplacian, but this is data dependent.  The authors of \cite{averbuch2015ringit} use $k$-nearest neighbors, which helps with scale, but which still requires an arbitrary parameter $k$.  To adapt to the data, we 1D leverage persistent homology from topological data analysis \cite{edelsbrunner2010computational}.  Roughly, this framework allows one to find the scale at which topological features exist in point cloud data.  Specifically, we compute the ``1D Vietoris Rips Filtration'' on our sliding window data $X$, which tracks equivalence classes of loops, known as {\em homology classes} \cite{Hatcher}, as edges and triangles are gradually added between sliding window points.  The algorithm returns a ``persistence diagram,'' which is a multiset of points on a 2D birth/death grid, with each point corresponding a loop class.  The birth value $b_i$ indicates the scale $\epsilon$ at which the $i^{\text{th}}$ loop class forms, and the death value $d_i$ indicates the scale at which that class is ``filled in'' (expressible as a formal sum of triangle boundaries with coefficients in some field).  $d_i - b_i$ is known as the {\em persistence} of the $i^{\text{th}}$ class.  For sliding window periodic time series, one point in the diagram should have a much larger persistence than the others (e.g. Figure~\ref{fig:ConceptFigure}) \cite{perea2015sliding,tralie2017quasi}.  We take our scale to be $\frac{1}{2}(b_i + d_i)$ for the largest $d_i - b_i$.  
+Finally, note that we compute homology using $\mathbb{Z}_{49}$ coefficients to handle cases where a period has strong harmonics, since, choosing a field which is not relatively prime to a harmonic leads to lowered persistence \cite{perea2015sliding, traliemoebius}.  For instance, a jumping jacks motion has a second harmonic, since an individual jumps twice per cycle, so the common persistence algorithm with $\mathbb{Z}_2$ coefficients would lead to ``M{\"o}bius splitting'' \cite{traliemoebius}.
 
 \subsection{Cycle Reordering And Median Voting}
 \label{sec:cyclereordering}
@@ -158,11 +153,30 @@ Advantage of Eulerian is that everything is linear (can use SVD to compress)
 
 Interpolated windows can be projected back to pixel space one by one to save memory
 
+Mention the ``F'' parameter in the pipeline
 
 \section{Experiments}
 
 \subsection{Robustness Tests}
-Robustness experiments
+
+
+\begin{figure}
+\centering
+\includegraphics[width=\columnwidth]{RobustnessTests.pdf}
+\caption{Robustness tests.}
+\label{fig:RobustnessTests}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=\columnwidth]{RobustnessTestsNoSW.pdf}
+\caption{Robustness tests without sliding window.}
+\label{fig:RobustnessTestsNoSW}
+\end{figure}
+
+
+We now experimentally quantify the accuracy of our circular coordinate inference, since we cannot hope to get a good slow motion template unless our circular coordinates are accurate.  We generate 3 different 600 frame synthetic periodic videos for which we know the ground truth circular coordinates, using software from \cite{jacobson2012fast}.  We vary the number of cycles that the videos undergo between 3, 5, 10, 15, 20, 25, 30, 40, and 50, and we also vary the ``shake'' of the video (width of a motion blur kernel) from 0, $20 \times 20$, $40 \times 40$, and $80 \times 80$, to assess the effect of drift.  We also compare different fractions $\kappa$ of mutual nearest neighbors to tune the threshold at which the unweighted Laplacian is built to TDA for aututuning the scale.  Figure~\ref{fig:RobustnessTests} shows the average angular error in degrees for our entire pipeline, and Figure~\ref{fig:RobustnessTests}.  The errors are overall quite low for moderate shake with a sliding window, though they increase as more shake is introduced.  Without a sliding window, the only video that performs reasonably well is the ``crowd'' videom, though the errors increase with shake much more rapidly than with the sliding window, supporting the ``time regularization'' properties of the sliding window.
+
 
 \subsection{Qualitative Results}
 \begin{figure}
@@ -179,9 +193,7 @@ Robustness experiments
 \label{fig:XTSliceFan}
 \end{figure}
 
-Figure~\ref{fig:XTSliceJumpingJacks} shows the difference between a simple reordering and a median consensus reordering.  Due to natural variation from cycle to cycle, the simple reordering has many temporal discontinuities when interleaving these cycles.  By contrast, the median voting is clean, and it has the added benefit of removing nonperiodic background components.
-
-umping jacks 2 men, two exercise videos from \cite{levy2015live}, beating heart videos from \cite{traliehigh}, \cite{wu2012eulerian}, and \cite{wadhwa2013phase}.
+We now qualitatively examine the results of our slow motion templates on some examples.  Figure~\ref{fig:XTSliceJumpingJacks} shows the difference between a simple reordering and a median consensus reordering.  Due to natural variation from cycle to cycle, the simple reordering has many temporal discontinuities when interleaving these cycles.  By contrast, the median voting is clean, and it has the added benefit of removing nonperiodic background components.  Figure~\ref{fig:XTSliceFan} shows an extreme example in which an original spinning fan video has only 6 frames per period at framerate.  In addition to these examples, in our supplementary material, we show results from jumping jacks 2 men, two exercise videos from \cite{levy2015live}, and beating heart videos from \cite{traliehigh}, \cite{wu2012eulerian}, and \cite{wadhwa2013phase}.
 
 \section{Discussion}
 

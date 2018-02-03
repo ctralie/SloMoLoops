@@ -73,7 +73,7 @@ def makeCirculantExample():
     plt.subplot2grid((2, 4), (0, 1), colspan = 2)
     plt.plot(v[:, 1:3])
     plt.xlabel("Sliding Window Frame")
-    plt.title("Ideal Laplacian Eigenvectors")
+    plt.title("Numerical Ideal Laplacian Eigenvectors")
     plt.legend(['eig1', 'eig2'])
     plt.subplot(244)
     plt.scatter(v[:, 1], v[:, 2])
