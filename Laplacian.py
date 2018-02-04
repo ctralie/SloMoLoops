@@ -73,6 +73,7 @@ def getLapCircularCoordinatesSigma(D, sigma, NEigs = 10, doPlot = False):
     :return {'w':eigenvalues, 'v':eigenvectors, 'theta':Circular coordinates,\
             'thetau':Unwrapped circular coordinates, 'A':Adjacency matrix}
     """
+    #A = 0.5*(1+np.tanh((sigma-D)/sigma**2))
     A = np.exp(-D*D/(2*sigma**2))
     #A = np.exp(-D*D/sigma)
     np.fill_diagonal(A, 0)

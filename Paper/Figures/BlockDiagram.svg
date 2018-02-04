@@ -44,11 +44,11 @@
      fit-margin-left="0"
      fit-margin-right="0"
      fit-margin-bottom="0"
-     inkscape:zoom="0.50000003"
-     inkscape:cx="2185.8867"
-     inkscape:cy="185.78579"
-     inkscape:window-x="2043"
-     inkscape:window-y="114"
+     inkscape:zoom="0.70710682"
+     inkscape:cx="1722.1912"
+     inkscape:cy="397.20713"
+     inkscape:window-x="212"
+     inkscape:window-y="161"
      inkscape:window-maximized="0"
      inkscape:current-layer="svg2">
     <inkscape:grid
@@ -27529,14 +27529,16 @@
          x="776.02271"
          xlink:href="#glyph0-31-7"
          width="100%"
-         height="100%" />
+         height="100%"
+         transform="translate(-2.185643,0)" />
       <use
          id="use18426"
          y="36.427841"
          x="790.00031"
          xlink:href="#glyph0-33-6"
          width="100%"
-         height="100%" />
+         height="100%"
+         transform="translate(-4.371286,0)" />
     </g>
     <path
        id="path18428"
@@ -27871,52 +27873,6 @@
          y="39.189564"
          x="486.72266"
          xlink:href="#glyph0-32-7"
-         width="100%"
-         height="100%" />
-    </g>
-    <g
-       id="g18538"
-       style="fill:#000000;fill-opacity:1">
-      <use
-         id="use18540"
-         y="70.271591"
-         x="591.12891"
-         xlink:href="#glyph0-29-8"
-         width="100%"
-         height="100%" />
-      <use
-         id="use18542"
-         y="70.271591"
-         x="599.38086"
-         xlink:href="#glyph0-30-9"
-         width="100%"
-         height="100%" />
-      <use
-         id="use18544"
-         y="70.271591"
-         x="612.23486"
-         xlink:href="#glyph0-10-5"
-         width="100%"
-         height="100%" />
-      <use
-         id="use18546"
-         y="70.271591"
-         x="616.36707"
-         xlink:href="#glyph0-10-5"
-         width="100%"
-         height="100%" />
-      <use
-         id="use18548"
-         y="70.271591"
-         x="620.49927"
-         xlink:href="#glyph0-31-7"
-         width="100%"
-         height="100%" />
-      <use
-         id="use18552"
-         y="70.271591"
-         x="634.47687"
-         xlink:href="#glyph0-33-6"
          width="100%"
          height="100%" />
     </g>
@@ -28271,21 +28227,24 @@
          x="1042.2336"
          xlink:href="#glyph0-31-7"
          width="100%"
-         height="100%" />
+         height="100%"
+         transform="translate(-2.185643,0)" />
       <use
          id="use18670"
          y="34.642689"
          x="1047.3055"
          xlink:href="#glyph0-32-7"
          width="100%"
-         height="100%" />
+         height="100%"
+         transform="translate(-3.2784645,0)" />
       <use
          id="use18672"
          y="34.642689"
          x="1056.2113"
          xlink:href="#glyph0-33-6"
          width="100%"
-         height="100%" />
+         height="100%"
+         transform="translate(-4.371286,0)" />
     </g>
     <path
        style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.99986339;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -28318,39 +28277,27 @@
   <text
      xml:space="preserve"
      style="font-style:normal;font-weight:normal;font-size:24px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     x="892.58514"
-     y="128.49487"
-     id="text10956-4-2-4"
-     sodipodi:linespacing="125%"><tspan
-       sodipodi:role="line"
-       id="tspan10958-5-5-7"
-       x="892.58514"
-       y="128.49487"
-       style="font-size:10px">dim</tspan></text>
-  <text
-     xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:24px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     x="1120.0964"
-     y="77.461388"
+     x="1124.6964"
+     y="76.461388"
      id="text10956-4-2-7"
      sodipodi:linespacing="125%"><tspan
        sodipodi:role="line"
        id="tspan10958-5-5-5"
-       x="1120.0964"
-       y="77.461388"
-       style="font-size:10px">dim</tspan></text>
+       x="1124.6964"
+       y="76.461388"
+       style="font-size:14px">d</tspan></text>
   <text
      xml:space="preserve"
      style="font-style:normal;font-weight:normal;font-size:24px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     x="1510.1078"
-     y="75.044075"
+     x="1513.8818"
+     y="74.76123"
      id="text10956-4-2-48"
      sodipodi:linespacing="125%"><tspan
        sodipodi:role="line"
        id="tspan10958-5-5-1"
-       x="1510.1078"
-       y="75.044075"
-       style="font-size:10px">dim</tspan></text>
+       x="1513.8818"
+       y="74.76123"
+       style="font-size:14px">d</tspan></text>
   <text
      xml:space="preserve"
      style="font-style:normal;font-weight:normal;font-size:24px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -28362,18 +28309,6 @@
        id="tspan9728"
        x="690.79999"
        y="101.43496"
-       style="font-size:20px">Z</tspan></text>
-  <text
-     xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:24px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     x="916.5"
-     y="124.53496"
-     id="text9726-3"
-     sodipodi:linespacing="125%"><tspan
-       sodipodi:role="line"
-       id="tspan9728-6"
-       x="916.5"
-       y="124.53496"
        style="font-size:20px">Z</tspan></text>
   <text
      xml:space="preserve"
@@ -28390,13 +28325,73 @@
   <text
      xml:space="preserve"
      style="font-style:normal;font-weight:normal;font-size:24px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     x="1143.7999"
+     x="1139"
      y="74.834961"
      id="text9726-35"
      sodipodi:linespacing="125%"><tspan
        sodipodi:role="line"
        id="tspan9728-62"
-       x="1143.7999"
+       x="1139"
        y="74.834961"
+       style="font-size:20px">Z</tspan></text>
+  <use
+     transform="matrix(1.4641,0,0,1.4641,-226.02871,64.979264)"
+     style="fill:#000000;fill-opacity:1"
+     id="use18414-3"
+     y="36.427841"
+     x="746.65234"
+     xlink:href="#glyph0-29-8"
+     width="100%"
+     height="100%" />
+  <use
+     transform="matrix(1.4641,0,0,1.4641,-226.02871,64.979264)"
+     style="fill:#000000;fill-opacity:1"
+     id="use18416-6"
+     y="36.427841"
+     x="754.9043"
+     xlink:href="#glyph0-30-9"
+     width="100%"
+     height="100%" />
+  <use
+     style="fill:#000000;fill-opacity:1"
+     id="use18422-7"
+     y="36.427841"
+     x="776.02271"
+     xlink:href="#glyph0-31-7"
+     width="100%"
+     height="100%"
+     transform="matrix(1.4641,0,0,1.4641,-229.22871,64.979264)" />
+  <use
+     style="fill:#000000;fill-opacity:1"
+     id="use18426-5"
+     y="36.427841"
+     x="790.00031"
+     xlink:href="#glyph0-33-6"
+     width="100%"
+     height="100%"
+     transform="matrix(1.4641,0,0,1.4641,-232.42871,64.979264)" />
+  <text
+     xml:space="preserve"
+     style="font-style:normal;font-weight:normal;font-size:24px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     x="897.89636"
+     y="121.06139"
+     id="text10956-4-2-7-3"
+     sodipodi:linespacing="125%"><tspan
+       sodipodi:role="line"
+       id="tspan10958-5-5-5-5"
+       x="897.89636"
+       y="121.06139"
+       style="font-size:14px">d</tspan></text>
+  <text
+     xml:space="preserve"
+     style="font-style:normal;font-weight:normal;font-size:24px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     x="912.19995"
+     y="119.43496"
+     id="text9726-35-6"
+     sodipodi:linespacing="125%"><tspan
+       sodipodi:role="line"
+       id="tspan9728-62-2"
+       x="912.19995"
+       y="119.43496"
        style="font-size:20px">Z</tspan></text>
 </svg>
