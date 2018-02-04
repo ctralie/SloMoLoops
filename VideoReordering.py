@@ -197,8 +197,8 @@ def sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew, NExamples = 20):
 
 def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
                 doSimple = False, doImageAnalogies = False, doPlot = True, \
-                Verbose = False, fileprefix = "", Kappa = -1, percentile = True,
-                p = 41, returnAnswer = True, doSlidingWindow = True, \
+                Verbose = False, fileprefix = "", Kappa = -1, Alpha = 0.5, \
+                percentile = True, p = 41, returnAnswer = True, doSlidingWindow = True, \
                 expandWindow = False, tdifflim = -1):
     """
     Reorder the video based on circular coordinates of a sliding
@@ -214,6 +214,8 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
     :param Verbose: Whether to print timing information
     :param Kappa: If it's a number in [0, 1], then use mutual nearest neighbors\
         instead of TDA-based thresholds
+    :param Alpha: A number in [0, 1] that weights \
+                    Alpha*birthTime + (1-Alpha)*deathTime as threshold
     :param p: Field coefficient to use in rips filtration
     """
     tic = time.time()
@@ -271,11 +273,7 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
             print("Elapsed Time H1: %g"%(time.time() - tic))
         I = Is[1]
         imax = np.argmax(I[:, 1] - I[:, 0])
-        if Weighted:
-            thresh = I[imax, 0]
-        else:
-            alpha = 0.5
-            thresh = alpha*I[imax, 0] + (1-alpha)*I[imax, 1]
+        thresh = Alpha*I[imax, 0] + (1-Alpha)*I[imax, 1]
         tic = time.time()
         if Weighted:
             if doPlot:
