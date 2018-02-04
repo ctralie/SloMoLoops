@@ -171,20 +171,14 @@ We now show some experimental results from our pipeline.  We use the GUDHI libra
 
 \begin{figure}
 \centering
-\includegraphics[width=\columnwidth]{RobustnessTests.pdf}
+\includegraphics[width=\columnwidth]{RobustnessTestsShake.pdf}
 \caption{Robustness tests.}
-\label{fig:RobustnessTests}
-\end{figure}
-
-\begin{figure}
-\centering
-\includegraphics[width=\columnwidth]{RobustnessTestsNoSW.pdf}
-\caption{Robustness tests without sliding window.}
-\label{fig:RobustnessTestsNoSW}
+\label{fig:RobustnessTestsShake}
 \end{figure}
 
 
-We first experimentally quantify the accuracy of our circular coordinate inference, since we cannot hope to get a good slow motion template unless our circular coordinates are accurate.  We generate 3 different 600 frame synthetic periodic videos for which we know the ground truth circular coordinates, using software from \cite{jacobson2012fast}.  We vary the number of cycles that the videos undergo between 3, 5, 10, 15, 20, 25, 30, 40, and 50, and we also vary the ``shake'' of the video (width of a motion blur kernel) from 0, $20 \times 20$, $40 \times 40$, and $80 \times 80$, to assess the effect of drift.  We also compare different fractions $\kappa$ of mutual nearest neighbors to tune the threshold at which the unweighted Laplacian is built to TDA for aututuning the scale.  Figure~\ref{fig:RobustnessTests} shows the average angular error in degrees for our entire pipeline, and Figure~\ref{fig:RobustnessTests}.  The errors are overall quite low for moderate shake with a sliding window, though they increase as more shake is introduced.  Without a sliding window, the only video that performs reasonably well is the ``crowd'' videom, though the errors increase with shake much more rapidly than with the sliding window, supporting the ``time regularization'' properties of the sliding window.
+
+We first experimentally quantify the accuracy of our circular coordinate inference, since we cannot hope to get a good slow motion template unless our circular coordinates are accurate.  We generate 3 different 600 frame synthetic periodic videos for which we know the ground truth circular coordinates, using software from \cite{jacobson2012fast}.  We vary the number of cycles that the videos undergo between 3, 5, 10, 15, 20, 25, 30, 40, and 50, and we also vary the ``shake'' of the video (width of a motion blur kernel) from 0, $20 \times 20$, $40 \times 40$, and $80 \times 80$, to assess the effect of drift.  We also compare different fractions $\kappa$ of mutual nearest neighbors to tune the threshold at which the unweighted Laplacian is built to TDA for aututuning the scale.  Figure~\ref{fig:RobustnessTestsShake} shows the average angular error in degrees for our entire pipeline under different amounts of shake.  The errors are overall quite low for moderate shake with a sliding window, though they increase as more shake is introduced.  Without a sliding window, the only video that performs reasonably well is the ``crowd'' videom, though the errors increase with shake much more rapidly than with the sliding window, supporting the ``time regularization'' properties of the sliding window.
 
 
 \subsection{Qualitative Results}
