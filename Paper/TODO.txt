@@ -1,12 +1,12 @@
 *Finish abstract
+*Image analogies?
+
+Finished:
 *Finish intro, with connections to other methods
 *Edit related work
 *Finish filling in method section for Laplacian, TDA, cycle reordering
 *Robustness experiments writeup
 *Summarizing video results
-*Image analogies?
-
-Finished:
 *Update block diagram to make clearer
 *XT slice for fan (make fan clearer)
 *Sliding window definitions
