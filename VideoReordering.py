@@ -197,8 +197,8 @@ def sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew, NExamples = 20):
 
 def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
                 doSimple = False, doImageAnalogies = False, doPlot = True, \
-                Verbose = False, fileprefix = "", Kappa = -1, p = 41, \
-                returnAnswer = True, doSlidingWindow = True, \
+                Verbose = False, fileprefix = "", Kappa = -1, percentile = True,
+                p = 41, returnAnswer = True, doSlidingWindow = True, \
                 expandWindow = False, tdifflim = -1):
     """
     Reorder the video based on circular coordinates of a sliding
@@ -259,9 +259,9 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
 
     if Kappa > 0 and Kappa < 1:
         if Weighted:
-            res = getLapCircularCoordinatesKNNWeighted(D, Kappa)
+            res = getLapCircularCoordinatesKNNWeighted(D, Kappa, percentile = percentile)
         else:
-            res = getLapCircularCoordinatesKNN(D, Kappa)
+            res = getLapCircularCoordinatesKNN(D, Kappa, percentile = percentile)
     else:
         if Verbose:
             print("Computing H1 on point cloud of size %i..."%D.shape[0])
@@ -270,8 +270,12 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         if Verbose:
             print("Elapsed Time H1: %g"%(time.time() - tic))
         I = Is[1]
-        thresh = np.argmax(I[:, 1] - I[:, 0])
-        thresh = np.mean(I[thresh, :])
+        imax = np.argmax(I[:, 1] - I[:, 0])
+        if Weighted:
+            thresh = I[imax, 0]
+        else:
+            alpha = 0.5
+            thresh = alpha*I[imax, 0] + (1-alpha)*I[imax, 1]
         tic = time.time()
         if Weighted:
             if doPlot:
@@ -293,7 +297,13 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         plt.title("Adjacency Matrix")
         plt.subplot(233)
         if not (Kappa > 0 and Kappa < 1):
-            plotDGM(I)
+            lims = [np.min(I), np.max(I)]
+            plt.plot(lims, lims, 'k')
+            plt.scatter(I[:, 0], I[:, 1], 20)
+            plt.scatter(I[imax, 0], I[imax, 1], 40)
+            plt.plot([lims[0], thresh], [thresh, thresh], 'k', linestyle='--')
+            plt.plot([thresh, thresh], [thresh, lims[0]], 'k', linestyle='--')
+            plt.plot([I[imax, 0]]*2, I[imax, :], 'r')
             plt.title("H1, Thresh = %g"%thresh)
         plt.subplot(234)
         plt.imshow(v, cmap = 'afmhot', interpolation = 'nearest', aspect = 'auto')

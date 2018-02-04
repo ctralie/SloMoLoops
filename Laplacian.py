@@ -124,16 +124,22 @@ def getLapCircularCoordinatesThresh(pD, thresh, NEigs = 10, doPlot = False):
     (theta, thetau) = getLapThetas(v, i1, i1+1)
     return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
 
-def getLapCircularCoordinatesKNN(D, Kappa, NEigs = 10, doPlot = False):
+def getLapCircularCoordinatesKNN(D, Kappa, NEigs = 10, percentile = True, doPlot = False):
     """
     Get circular coordinates using a weighted laplacian 
     :param pD: Distance matrix
     :param Kappa: Percentage of mutual nearest neighbors
     :param NEigs: Maximum number of eigenvectors to compute
+    :param percentile: Whether to use percentile or tuned mutual nearest neighbors
     :return {'w':eigenvalues, 'v':eigenvectors, 'theta':Circular coordinates,\
             'thetau':Unwrapped circular coordinates, 'A':Adjacency matrix}
     """
-    A = CSMToBinaryMutual(D, Kappa)
+    if percentile:
+        ds = np.sort(D.flatten())
+        sigma = ds[int(Kappa*len(ds))]
+        A = D <= sigma
+    else:
+        A = CSMToBinaryMutual(D, Kappa)
     np.fill_diagonal(A, 0)
     NEigs = min(NEigs, A.shape[0])
     (w, v, L) = getLaplacianEigsDense(A, NEigs)
@@ -153,18 +159,23 @@ def getLapCircularCoordinatesKNN(D, Kappa, NEigs = 10, doPlot = False):
     (theta, thetau) = getLapThetas(v, i1, i1+1)
     return {'w':w, 'v':v, 'theta':theta, 'thetau':thetau, 'A':A, 'idxs':[i1, i1+1]}
 
-def getLapCircularCoordinatesKNNWeighted(D, Kappa, NEigs = 10, doPlot = False):
+def getLapCircularCoordinatesKNNWeighted(D, Kappa, NEigs = 10, percentile = True, doPlot = False):
     """
     Get circular coordinates using a weighted laplacian 
     :param pD: Distance matrix
     :param Kappa: Percentage of mutual nearest neighbors
     :param NEigs: Maximum number of eigenvectors to compute
+    :param percentile: Whether to use percentile or tuned mutual nearest neighbors
     :return {'w':eigenvalues, 'v':eigenvectors, 'theta':Circular coordinates,\
             'thetau':Unwrapped circular coordinates, 'A':Adjacency matrix}
     """
-    K = int(Kappa*D.shape[0])
-    dNN = np.mean(np.sort(D, 1)[:, 0:K], 1)
-    sigma = 0.5*(dNN[:, None] + dNN[None, :])
+    if percentile:
+        ds = np.sort(D.flatten())
+        sigma = ds[int(Kappa*len(ds))]        
+    else:
+        K = int(Kappa*D.shape[0])
+        dNN = np.mean(np.sort(D, 1)[:, 0:K], 1)
+        sigma = 0.5*(dNN[:, None] + dNN[None, :])
     A = np.exp(-D*D/(sigma))
     np.fill_diagonal(A, 0)
     NEigs = min(NEigs, A.shape[0])

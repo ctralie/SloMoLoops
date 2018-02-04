@@ -122,35 +122,38 @@ def doTest(filename, NCycles, noise, shake, fileprefix = "", Verbose = False, sa
             depth = -pyr_level - 1
             I_feat = getVideoResNet(I, IDims, depth)
         for Kappa in [0, 0.05, 0.1, 0.15]:
-            for Weighted in [False]:
-                for doSlidingWindow in [True, False]:
-                    thisprefix = "%i_%i_%g_%i"%(doSlidingWindow, pyr_level, Kappa, Weighted)
-                    res = reorderVideo(I, I_feat, IDims, derivWin = 0, Weighted = Weighted, \
-                                        doSimple = doSimple, doPlot = doPlot, Verbose = Verbose, \
-                                        doImageAnalogies = False, Kappa = Kappa, \
-                                        fileprefix = fileprefix+thisprefix, returnAnswer = False, \
-                                        doSlidingWindow = doSlidingWindow)
-                    theta = np.mod(res['thetau'], 2*np.pi)
-                    thetagt = thetagt[0:len(theta)]
-                    theta = theta[0:len(thetagt)]
-                    circErr = np.mean(getCircleDist(theta, thetagt))
-                    rank1 = 0*thetagt
-                    rank1[np.argsort(thetagt)] = np.arange(len(rank1))
-                    rank2 = 0*rank1
-                    rank2[np.argsort(theta)] = np.arange(len(rank2))
-                    kendTau = getKendallTauCircle(rank1, rank2)
-                    ret[thisprefix] = [circErr, kendTau]
-                    if doPlot:
-                        plt.figure(figsize=(8, 6))
-                        plt.subplot(211)
-                        plt.scatter(thetagt, theta)
-                        plt.title("err = %.3g"%circErr)
-                        plt.subplot(212)
-                        plt.scatter(rank1, rank2)
-                        plt.title("$\\tau = %.3g$"%kendTau)
-                        plt.savefig("%s_CircCoordsCorr.svg"%(fileprefix+thisprefix), bbox_inches = 'tight')
-                    if saveVideos:
-                        saveVideo(res['X'], IDims, (fileprefix+thisprefix)+".avi")
+            for Weighted in [True]:
+                for percentile in [False, True]:
+                    for doSlidingWindow in [True, False]:
+                        thisprefix = "%i_%i_%g_%i_%i"%(doSlidingWindow, pyr_level, Kappa, Weighted, percentile)
+                        res = reorderVideo(I, I_feat, IDims, derivWin = 0, Weighted = Weighted, \
+                                            doSimple = doSimple, doPlot = doPlot, Verbose = Verbose, \
+                                            doImageAnalogies = False, Kappa = Kappa, percentile = percentile, \
+                                            fileprefix = fileprefix+thisprefix, returnAnswer = False, \
+                                            doSlidingWindow = doSlidingWindow)
+                        if percentile and Kappa == 0:
+                            continue #Percentile means nothing for TDA
+                        theta = np.mod(res['thetau'], 2*np.pi)
+                        thetagt = thetagt[0:len(theta)]
+                        theta = theta[0:len(thetagt)]
+                        circErr = np.mean(getCircleDist(theta, thetagt))
+                        rank1 = 0*thetagt
+                        rank1[np.argsort(thetagt)] = np.arange(len(rank1))
+                        rank2 = 0*rank1
+                        rank2[np.argsort(theta)] = np.arange(len(rank2))
+                        kendTau = getKendallTauCircle(rank1, rank2)
+                        ret[thisprefix] = [circErr, kendTau]
+                        if doPlot:
+                            plt.figure(figsize=(8, 6))
+                            plt.subplot(211)
+                            plt.scatter(thetagt, theta)
+                            plt.title("err = %.3g"%circErr)
+                            plt.subplot(212)
+                            plt.scatter(rank1, rank2)
+                            plt.title("$\\tau = %.3g$"%kendTau)
+                            plt.savefig("%s_CircCoordsCorr.svg"%(fileprefix+thisprefix), bbox_inches = 'tight')
+                        if saveVideos:
+                            saveVideo(res['X'], IDims, (fileprefix+thisprefix)+".avi")
     return ret
 
 def writeBatchHeader(fout, filename):
@@ -159,11 +162,11 @@ def writeBatchHeader(fout, filename):
     <body><h1>{}</h1>
     <table border = "1">
     <tr><td>NCycles</td><td>Noise</td><td>Shake</td><td>TrialNumber</td><td>SlidingWindow</td>
-        <td>PyramidLevel</td><td>Kappa</td><td>Weighted</td><td>CircError</td><td>KendallTau</td></tr>   
+        <td>PyramidLevel</td><td>Kappa</td><td>Weighted</td><td>Percentile</td><td>CircError</td><td>KendallTau</td></tr>   
     """.format(filename))
 
 def writeBatchHeaderCSV(fout, filename):
-    fout.write("NCycles,Noise,Shake,TrialNumber,SlidingWindow,PyramidLevel,Kappa,Weighted,CircError,KendallTau")
+    fout.write("NCycles,Noise,Shake,TrialNumber,SlidingWindow,PyramidLevel,Kappa,Weighted,Percentile,CircError,KendallTau")
 
 def doBatchTests(filename, fout, batchidx = -1):
     idx = 0
@@ -175,7 +178,7 @@ def doBatchTests(filename, fout, batchidx = -1):
                     ret = doTest(filename, NCycles, noise, shake, Verbose = True)
                     for item in ret:
                         fout.write("%i,%g,%i,%i,"%(NCycles, noise, shake, trial))
-                        fout.write(("%s,"*4)%tuple(item.split("_")))
+                        fout.write(("%s,"*5)%tuple(item.split("_")))
                         fout.write(("%g,%g\n")%tuple(ret[item]))
                         fout.flush()
                 idx += 1
