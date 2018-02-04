@@ -44,13 +44,13 @@
      fit-margin-left="0"
      fit-margin-right="0"
      fit-margin-bottom="0"
-     inkscape:zoom="0.70710682"
-     inkscape:cx="1722.1912"
-     inkscape:cy="397.20713"
-     inkscape:window-x="212"
-     inkscape:window-y="161"
+     inkscape:zoom="2.0000001"
+     inkscape:cx="917.5323"
+     inkscape:cy="477.20713"
+     inkscape:window-x="65"
+     inkscape:window-y="157"
      inkscape:window-maximized="0"
-     inkscape:current-layer="svg2">
+     inkscape:current-layer="g18396">
     <inkscape:grid
        type="xygrid"
        id="grid15452" />
@@ -27454,21 +27454,8 @@
          x="462.51172"
          xlink:href="#glyph0-6-8"
          width="100%"
-         height="100%" />
-      <use
-         id="use18400"
-         y="70.482529"
-         x="470.76367"
-         xlink:href="#glyph0-4-4"
-         width="100%"
-         height="100%" />
-      <use
-         id="use18402"
-         y="70.482529"
-         x="474.37561"
-         xlink:href="#glyph0-13-8"
-         width="100%"
-         height="100%" />
+         height="100%"
+         transform="translate(8.7425722,0)" />
     </g>
     <g
        id="g18404"
