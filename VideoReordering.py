@@ -197,7 +197,7 @@ def sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew, NExamples = 20):
 
 def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
                 doSimple = False, doImageAnalogies = False, doPlot = True, \
-                Verbose = False, fileprefix = "", Kappa = -1, Alpha = 0.5, \
+                Verbose = False, fileprefix = "", Kappa = -1, Alpha = 1.0, \
                 percentile = True, p = 41, returnAnswer = True, doSlidingWindow = True, \
                 expandWindow = False, tdifflim = -1):
     """
@@ -274,6 +274,7 @@ def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
         I = Is[1]
         imax = np.argmax(I[:, 1] - I[:, 0])
         thresh = Alpha*I[imax, 0] + (1-Alpha)*I[imax, 1]
+        print("Thresh is at %.3g percentile"%(np.sum(D < thresh)/D.size))
         tic = time.time()
         if Weighted:
             if doPlot:
