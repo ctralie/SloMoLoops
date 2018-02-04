@@ -53,6 +53,11 @@
 
 \begin{abstract}
 
+In this paper we consider the problem of taking a video that is comprised of multiple periods of repetitive motion, and reordering the frames of the video into a single period, producing a detailed, single cycle, video of motion.
+This problem is challenging to solve, as such videos often contain noise, drift due to camera motion, and irrelevant background motion, and these factors can confound the relevant periodic motion we seek in the video.
+To address these issues in a simple and efficient manner, we introduce an Eulerian approach for synthesizing a single cycle of motion.
+Our approach is geometric: we treat each video frame as a point in a high-dimensional Euclidean space, and analyze the
+{\em sliding window embedding} formed by this sequence of points.
 The majority of our pipeline is fully automated, using tools from topological data analysis in concert with nonlinear dimenison reduction to autotune the spatial and temporal scales of the period.
 
 \end{abstract}
