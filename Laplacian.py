@@ -50,14 +50,22 @@ def getSlopes(thetas, sWin = 10):
     slopes[-(sWin+1):] = slopes[-(sWin+1)]
     return slopes
 
-def getSlowestEigenvectorIdx(v):
+def getSlowestEigenvectorIdx(v, tol = 0.95):
+    """
+    Find the adjacent pair of eigenvectors with similar eigenvalues that have
+    the smallest number of zero crossings
+    :param v: NEigs x k array of eigenvectors arrange along columns
+    :param tol: Reject pairs with zero crossings ratio less than tol
+    """
     #Compute zero crossings and put the low frequencies eigenvectors first
     s = v > 0
     zcs = np.sum(s[1::, :] - s[0:-1, :], 0)
-    #Find the adjacent pair with the smallest number of zero crossings
     smallest = np.inf
     i1 = 1
     for i in range(1, len(zcs)-1):
+        ratio = min(float(zcs[i])/zcs[i+1], float(zcs[i+1])/zcs[i])
+        if ratio < tol:
+            continue
         bothSum = zcs[i] + zcs[i+1]
         if bothSum < smallest:
             smallest = bothSum

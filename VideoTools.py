@@ -485,21 +485,48 @@ def simulateCameraShake(I, IDims, shakeMag):
             IBlur[:, :, k] = scipy.signal.fftconvolve(X[:, :, k], mask, 'same')
         I[i, :] = IBlur.flatten()
 
-if __name__ == '__main__2':
-    (I, IDims) = loadVideo("VocalCordsVideos/LTR_ED_MucusBiphonCrop.avi")
-    IBlur = simulateCameraShake(I, IDims, 40)
-    saveVideo(IBlur, IDims, "MucusBlur.avi")
-    IGradient = getGradientVideo(I, IDims, sigma=1)
-    IGradient = IGradient/np.max(IGradient)
-    saveVideo(IGradient, IDims, "out.avi")
+def simulateBGBlob(I, IDims, fac):
+    """
+    Simulate a blob taking a random walk in the video as a source
+    of unrelated background motion.
+    Do the blur in place to save memory
+    :param I: NFrames x (NPixelsxNChannels) dimensional video
+    :param IDims: Tuple of dimensions of each frame
+    :param fac: A fraction in [0, 1] of the area that the blob occupes
+    """
+    NFrames = I.shape[0]
+    L = int(np.sqrt(IDims[0]*IDims[1]*fac)) #Width of blob
+    H = int(min(IDims[0]-L, IDims[1]-L))
+    X = makeRandomWalkCurve(H, int(NFrames/4.0), 2)
+    X = smoothCurve(X, 20)
+    skip = int(np.floor(X.shape[0]/NFrames))
+    X = X[0::skip, :]
+    X = X[0:NFrames, :]
+    X = X - np.min(X, 0)[None, :]
+    denom = np.max(X, 0)
+    denom[denom == 0] = 1
+    X = X/denom[None, :]
+    X[:, 0] *= (IDims[0]-L)
+    X[:, 1] *= (IDims[1]-L)
+    X = np.round(X)
+    X[X < 0] = 0
+    X[X[:, 0] > IDims[0]-L-1, 0] = IDims[0]-L-1
+    X[X[:, 1] > IDims[1]-L-1, 1] = IDims[1]-L-1
+    X = np.array(X, dtype=np.int64)
+    colordrift = np.cumsum(np.random.randn(NFrames, 3), 0)
+    colordrift = colordrift - np.min(colordrift, 0)
+    denom = np.max(colordrift, 0)
+    denom[denom == 0] = 1
+    colordrift = colordrift/denom[None, :]
+    for i in range(I.shape[0]):
+        F = np.reshape(I[i, :], IDims)
+        [u, v] = [int(X[i, 0]), int(X[i, 1])]
+        F[u:u+L, v:v+L, :] = colordrift[i, :]
+        I[i, :] = F.flatten()    
 
-if __name__ == '__main__2':
-    (I, IDims) = loadVideo("Videos/heartcrop.avi")
-    for lam in [0.01, 0.05, 0.1, 0.2, 0.5]:
-        (IRet, IDimsRet) = simulateByteErrors(I, IDims, lam)
-        saveVideo(IRet, IDimsRet, "VideoCorrupted%.2g.ogg"%lam)
 
 if __name__ == '__main__':
-    #(I, IDims) = make2ShakingPulses(400, T1 = 10, T2 = 10*np.pi/3, A1 = 20, A2 = 20, ydim = 160)
-    (I, IDims) = make2GaussianPulses(400, T1 = 10, T2 = 10*np.pi/3, ydim = 160)
-    saveVideo(I, IDims, "QuasiperiodicPulses.ogg")
+    #Test adding background blob
+    (I, I_Feat, IDims) = loadImageIOVideo("jumpingjacks2menlowres.ogg")
+    simulateBGBlob(I, IDims, 0.05)
+    saveVideo(I, IDims, "bg.avi")
