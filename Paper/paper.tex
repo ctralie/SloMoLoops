@@ -17,6 +17,9 @@
 \newcommand{\mb}{\mathbf}
 \setlength{\parskip}{0pt}
 
+%\usepackage{titlesec}
+%\titlespacing\section{0pt}{4pt plus 4pt minus 2pt}{0pt plus 2pt minus 2pt}
+
 \title{Topological Eulerian Synthesis of Slow Motion Periodic Videos}
 
 %
@@ -53,7 +56,7 @@
 
 \begin{abstract}
 
-In this paper we consider the problem of taking a video that is comprised of multiple periods of repetitive motion, and reordering the frames of the video into a single period, producing a detailed, single cycle video of motion. This problem is challenging to solve, as such videos often contain noise, drift due to camera motion and from cycle to cycle, and irrelevant background motion/occlusions, and these factors can confound the relevant periodic motion we seek in the video. To address these issues in a simple and efficient manner, we introduce an Eulerian approach for synthesizing a single cycle of motion, which requires no tracking. Our approach is geometric: we treat each video frame as a point in a high-dimensional Euclidean space, and analyze the {\em sliding window embedding} formed by this sequence of points, which yields points sampled along a topological loop regardless of the type of periodic motion.  Our technique for ordering the embedding combines tools from topological data analysis to determine the appropriate spatial scale, with tools from spectral geometric analysis to estimate the phase of each window.  We also exploit the sliding window structure by using overlapping windows to vote on a final template after phase reordering.  We show quantitative results that highlight the robustness of our technique to camera shake, noise, and occlusions, and we show qualitative results of single-cycle motion synthesis across a wide variety of scenarios.
+In this paper we consider the problem of taking a video that is comprised of multiple periods of repetitive motion, and reordering the frames of the video into a single period, producing a detailed, single cycle video of motion. This problem is challenging to solve, as such videos often contain noise, drift due to camera motion and from cycle to cycle, and irrelevant background motion/occlusions, and these factors can confound the relevant periodic motion we seek in the video. To address these issues in a simple and efficient manner, we introduce an Eulerian approach for synthesizing a single cycle of motion, which requires no tracking. Our approach is geometric: we treat each video frame as a point in a high-dimensional Euclidean space, and analyze the {\em sliding window embedding} formed by this sequence of points, which yields points sampled along a topological loop regardless of the type of periodic motion.  We combine tools from topological data analysis to determine the appropriate spatial scale, with tools from spectral geometric analysis to estimate the phase of each window.  We also exploit the sliding window structure to robustly reorder frames.  We show quantitative results that highlight the robustness of our technique to camera shake, noise, and occlusions, and qualitative results of single-cycle motion synthesis across a wide variety of scenarios.
 
 \end{abstract}
 %
@@ -83,8 +86,9 @@ To address the problems with an Eulerian representation, we devise a geometric a
 
 
 % MSB: opportunity to slim paper by cutting examples 
-Many prior works use a combination of sliding window embeddings and topological data analysis, for instance detecting chatter in mechanical systems \cite{khasawneh2016chatter} and quantifying periodic activites in motion capture data \cite{vejdemo2015cohomological, venkataraman2016persistent}. However, our approach in using a sliding window jointly with TDA to {\em synthesize} a new result is novel. Related works have used the graph Laplacian to rearrange images around a loop as a pre-processing step for structure from motion \cite{averbuch2015ringit}, and to reorder the frames of microscope images from a developing embryo~\cite{dsilva2015diffusionvecordering}.  However, our use of the graph Laplacian to instead {\em parameterize} time series is unique. One can also view the combination of TDA and Laplacian eigenmaps as a simpler alternative to cohomology circular coordinates \cite{de2011persistent,vejdemo2015cohomological} for the special case of periodic data, and it is related to the approach in \cite{bendich2011improving}, which performs diffusion maps before TDA.
-
+Many prior works use a combination of sliding window embeddings and topological data analysis, for instance detecting chatter in mechanical systems \cite{khasawneh2016chatter} and quantifying periodic activites in motion capture data \cite{vejdemo2015cohomological, venkataraman2016persistent}. However, our approach in using a sliding window jointly with TDA to {\em synthesize} a new result is novel. Related works have used the graph Laplacian to rearrange images around a loop as a pre-processing step for structure from motion \cite{averbuch2015ringit}, and to reorder the frames of microscope images from a developing embryo~\cite{dsilva2015diffusionvecordering}.
+However, our use of the graph Laplacian to instead {\em parameterize} time series is unique.
+%However, our use of the graph Laplacian to instead {\em parameterize} time series is unique. One can also view the combination of TDA and Laplacian eigenmaps as a simpler alternative to cohomology circular coordinates \cite{de2011persistent,vejdemo2015cohomological} for the special case of periodic data, and it is related to the approach in \cite{bendich2011improving}, which performs diffusion maps before TDA.
 
 \section{Slow Motion Templates}
 \label{sec:methods}
@@ -192,9 +196,13 @@ We first experimentally quantify the accuracy of our circular coordinate inferen
 
 We now qualitatively examine the results of our slow motion templates on some examples.  Figure~\ref{fig:XTSliceJumpingJacks} shows the difference between a simple reordering and a median consensus reordering.  Due to natural variation from cycle to cycle, the simple reordering has many temporal discontinuities when interleaving these cycles.  By contrast, the median voting is clean, and it has the added benefit of removing nonperiodic background components.  Figure~\ref{fig:XTSliceFan} shows an extreme example in which an original spinning fan video has only 6 frames per period at framerate.  In addition to these examples, in our supplementary material, we show results from jumping jacks 2 men, an exercise video \cite{levy2015live}, and beating heart videos \cite{traliehigh, wadhwa2013phase}.
 
-\section{Discussion}
+\section{Conclusions}
 
-Since we rely on the theory and constructions in \cite{tralie2017quasi}, we are subject to similar constraints in the allowable motion and drift for our method to work well.  We note that Eulerian video magnification also degrades in the presence of too much drift \cite{wu2012eulerian, wadhwa2013phase}.
+We have presented an approach that combines topological data analysis with spectral geometric analysis to reorder a video consisting of repetitive periodic motion into a single, slow motion template cycle.
+Our quantitative results demonstrate robustness to noise, drift, and background outliers, and our qualitative results reveal motion that is challenging to visually perceive from the raw input video.
+For future work, we plan on exploring applications of our technique to detecting motion irregularities, as well as visualizing subtle motions from repetitive motion that is temporally aliased.
+We will also investigate robust TDA and spectral methods, and sliding window reordering techniques, for dealing with large amounts of drift.
+%Since we rely on the theory and constructions in \cite{tralie2017quasi}, we are subject to similar constraints in the allowable motion and drift for our method to work well.  We note that Eulerian video magnification also degrades in the presence of too much drift \cite{wu2012eulerian, wadhwa2013phase}.
 
 
 % References should be produced using the bibtex program from suitable
