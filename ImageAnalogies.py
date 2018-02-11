@@ -200,13 +200,19 @@ def flattenPatchArray(X):
     X = np.reshape(X, [X.shape[0]*X.shape[1]*X.shape[2], X.shape[3]])
     return X
 
-def doImageAnalogiesAcausal(As, Aps, B, KSpatial = 5, \
+def doImageAnalogiesAcausal(As, Aps, Bs, KSpatial = 5, \
         patchfn = getColorPatchesImageSet, outputIters = False):
-    BPatches = patchfn([B], KSpatial, getPatches)
-    ShapeBefore = BPatches.shape[1::]
-    BPatches = flattenPatchArray(BPatches)
-    BpPatches = np.array([])
-    minDists = np.array([])
+    BPatches = []
+    minDists = []
+    BpPatches = []
+    ShapesBefore = []
+    for B in Bs:
+        BPatches.append(patchfn([B], KSpatial, getPatches))
+        ShapesBefore.append(BPatches[-1].shape[1::])
+        BPatches[-1] = flattenPatchArray(BPatches[-1])
+        minDists.append(np.array([]))
+        BpPatches.append(np.array([]))
+    
     for i in range(len(As)):
         #Loop through for memory reasons
         APatches = patchfn([As[i]], KSpatial, getPatches)
@@ -215,29 +221,32 @@ def doImageAnalogiesAcausal(As, Aps, B, KSpatial = 5, \
         ApPatches = flattenPatchArray(ApPatches)
         #Build ANN function off of A patches
         annList = pyflann.FLANN()
-        print("Building ANN list...")
-        tic = time.time()
         annList.build_index(APatches)
-        print("Elapsed Time: %g"%(time.time() - tic))
-        print("Finding nearest neighbors...")
+        
         tic = time.time()
-        (idx, dists) = annList.nn_index(BPatches)
-        print("Elapsed Time: %g"%(time.time() - tic))
-        if i == 0:
-            BpPatches = ApPatches[idx, :]
-            minDists = dists
-        else:
-            bidx = np.arange(BpPatches.shape[0])
-            bidx = bidx[dists < minDists]
-            BpPatches[bidx] = ApPatches[idx[bidx], :]
-            minDists[bidx] = dists[bidx]
-            print("%g%s Better Patches"%(100*float(len(bidx))/BpPatches.shape[0], '%'))
-        if outputIters:
-            Bp = recombineColorPatches(np.reshape(BpPatches, ShapeBefore),
-                                        KSpatial, B.shape[0], B.shape[1])
-            writeImage(Bp, "BPIter%i.png"%i)
-    BpPatches = np.reshape(BpPatches, ShapeBefore)
-    return recombineColorPatches(BpPatches, KSpatial, B.shape[0], B.shape[1])
+        for j, B in enumerate(Bs):
+            (idx, dists) = annList.nn_index(BPatches[j])
+            if i == 0:
+                BpPatches[j] = ApPatches[idx, :]
+                minDists[j] = dists
+            else:
+                bidx = np.arange(BpPatches[j].shape[0])
+                bidx = bidx[dists < minDists[j]]
+                BpPatches[j][bidx] = ApPatches[idx[bidx], :]
+                minDists[j][bidx] = dists[bidx]
+                print("Frame %i %g%s Better Patches"%\
+                    (j, 100*float(len(bidx))/BpPatches[j].shape[0], '%'))
+            if outputIters:
+                Bp = recombineColorPatches(np.reshape(BpPatches[j], ShapeBefore),
+                                            KSpatial, B.shape[0], B.shape[1])
+                writeImage(Bp, "BPIter%i_%i.png"%(j, i))
+        print("Elapsed Time NN %i Frames iter %i of %i: %g"%\
+                    (len(Bs), i, len(As), time.time() - tic))
+    Bps = []
+    for thisBpPatches, ShapeBefore in zip(BpPatches, ShapesBefore):
+        thisBpPatches = np.reshape(thisBpPatches, ShapeBefore)
+        Bps.append(recombineColorPatches(thisBpPatches, KSpatial, B.shape[0], B.shape[1]))
+    return Bps
 
 def testSuperRes(fac, Kappa, NLevels, fileprefix):
     from VideoTools import loadImageIOVideo

@@ -100,7 +100,7 @@ def getCycles(NCycles, filename, NFinal = -1):
     theta = np.mod(theta, 2*np.pi)
     return {'I':I[idx, :], 'IDims':IDims, 'idx':idx, 'theta':theta}
 
-def doTest(filename, NCycles, noise = 0, shake = 0, bgfac = 0, fileprefix = "", Verbose = False, saveVideos = False):
+def doTest(filename, NCycles, noise = 0, shake = 0, bgwidth = 0, fileprefix = "", Verbose = False, saveVideos = False):
     doPlot = False
     if len(fileprefix) > 1:
         doPlot = True
@@ -110,8 +110,8 @@ def doTest(filename, NCycles, noise = 0, shake = 0, bgfac = 0, fileprefix = "", 
     I += noise*np.random.randn(I.shape[0], I.shape[1])
     if shake > 0:
         simulateCameraShake(I, IDims, shake)
-    if bgfac > 0:
-        simulateBGBlob(I, IDims, bgfac)
+    if bgwidth > 0:
+        simulateBGBlob(I, IDims, bgwidth)
     if saveVideos:
         saveVideo(I, IDims, "%s_simulated.avi"%fileprefix)
     ret = {}
@@ -160,27 +160,29 @@ def writeBatchHeader(fout, filename):
     fout.write("""<html>
     <body><h1>{}</h1>
     <table border = "1">
-    <tr><td>NCycles</td><td>Noise</td><td>Shake</td><td>BgFac</td><td>TrialNumber</td><td>SlidingWindow</td>
+    <tr><td>NCycles</td><td>Noise</td><td>Shake</td><td>BgWidth</td><td>TrialNumber</td><td>SlidingWindow</td>
         <td>PyramidLevel</td><td>Alpha</td><td>Weighted</td><td>CircError</td><td>KendallTau</td></tr>   
     """.format(filename))
 
 def writeBatchHeaderCSV(fout, filename):
-    fout.write("NCycles,Noise,Shake,BgFac,TrialNumber,SlidingWindow,PyramidLevel,Alpha,Weighted,CircError,KendallTau")
+    fout.write("NCycles,Noise,Shake,BgWidth,TrialNumber,SlidingWindow,PyramidLevel,Alpha,Weighted,CircError,KendallTau")
 
 def doBatchTests(filename, fout, batchidx = -1):
     idx = 0
     noise = 0
+    shake = 0
     for NCycles in [3, 5, 10, 15, 20, 25, 30, 40, 50]:
-        for (noise, shake, bgfac) in [(0, 0, 0), (0, 10, 0), (0, 20, 0), \
+        for (noise, shake, bgwidth) in [(0, 0, 0), (0, 10, 0), (0, 20, 0), \
                                         (0, 30, 0), (0, 40, 0), (0, 50, 0),\
                                         (0.5, 0, 0), (1, 0, 0), (2, 0, 0),\
-                                        (0, 0, 0.01), (0, 0, 0.02), (0, 0, 0.05)]:
+                                        (0, 0, 10), (0, 0, 20), (0, 0, 30),\
+                                        (0, 0, 40), (0, 0, 50)]:
             for trial in range(50):
                 if idx == batchidx:
                     np.random.seed(idx)
-                    ret = doTest(filename, NCycles, noise, shake, bgfac, Verbose = True)
+                    ret = doTest(filename, NCycles, noise, shake, bgwidth, Verbose = True)
                     for item in ret:
-                        fout.write("%i,%g,%i,%g,%i,"%(NCycles, noise, shake, bgfac, trial))
+                        fout.write("%i,%g,%i,%i,%i,"%(NCycles, noise, shake, bgwidth, trial))
                         fout.write(("%s,"*len(item.split("_")))%tuple(item.split("_")))
                         fout.write(("%g,%g\n")%tuple(ret[item]))
                         fout.flush()
@@ -206,7 +208,7 @@ if __name__ == '__main__':
     parser.add_argument('--NCycles', type=int, default=0, help = "Number of cycles")
     parser.add_argument('--shake', type=int, default=0, help = "Shake by pixels")
     parser.add_argument('--noise', type=float, default=0, help = "AWGN coefficient")
-    parser.add_argument('--bgfac', type=float, default=0, help = "Background blob area ratio")
+    parser.add_argument('--bgwidth', type=int, default=0, help = "Background blob width in pixels")
     parser.add_argument('--makeplots', type=int, default=0, help='Save plots of circular coordinates to disk')
     parser.add_argument('--savevideos', type=int, default=0, help="Whether to save the simulated video")
     opt = parser.parse_args()
@@ -219,19 +221,19 @@ if __name__ == '__main__':
         NCycles = opt.NCycles
         noise = opt.noise
         shake = opt.shake
-        bgfac = opt.bgfac
+        bgwidth = opt.bgwidth
         saveVideos = opt.savevideos
-        fileprefix = "%i_%g_%i"%(NCycles, noise, shake)
+        fileprefix = "%i_%g_%i_%i"%(NCycles, noise, shake, bgwidth)
         trial = 0
         htmlfilename = "%s/%s.html"%(outdir, fileprefix)
         fout = open(htmlfilename, "w")
         writeBatchHeader(fout, filename)
         if not opt.makeplots:
             fileprefix = ""
-        ret = doTest(filename, NCycles, noise, shake, bgfac, Verbose = True, fileprefix=fileprefix, saveVideos = saveVideos)
+        ret = doTest(filename, NCycles, noise, shake, bgwidth, Verbose = True, fileprefix=fileprefix, saveVideos = saveVideos)
         for item in ret:
             fout.write("<tr>")
-            fout.write("<td>%i</td><td>%g</td><td>%i</td><td>%g</td><td>%i</td>"%(NCycles, noise, shake, bgfac, trial))
+            fout.write("<td>%i</td><td>%g</td><td>%i</td><td>%i</td><td>%i</td>"%(NCycles, noise, shake, bgwidth, trial))
             fout.write(("<td>%s</td>"*len(item.split("_")))%tuple(item.split("_")))
             fout.write(("<td>%g</td>"*2)%tuple(ret[item]))
             fout.write("</tr>\n")

@@ -485,17 +485,16 @@ def simulateCameraShake(I, IDims, shakeMag):
             IBlur[:, :, k] = scipy.signal.fftconvolve(X[:, :, k], mask, 'same')
         I[i, :] = IBlur.flatten()
 
-def simulateBGBlob(I, IDims, fac):
+def simulateBGBlob(I, IDims, L):
     """
     Simulate a blob taking a random walk in the video as a source
     of unrelated background motion.
     Do the blur in place to save memory
     :param I: NFrames x (NPixelsxNChannels) dimensional video
     :param IDims: Tuple of dimensions of each frame
-    :param fac: A fraction in [0, 1] of the area that the blob occupes
+    :param L: Blob width in pixels
     """
     NFrames = I.shape[0]
-    L = int(np.sqrt(IDims[0]*IDims[1]*fac)) #Width of blob
     H = int(min(IDims[0]-L, IDims[1]-L))
     X = makeRandomWalkCurve(H, int(NFrames/4.0), 2)
     X = smoothCurve(X, 20)
@@ -528,5 +527,5 @@ def simulateBGBlob(I, IDims, fac):
 if __name__ == '__main__':
     #Test adding background blob
     (I, I_Feat, IDims) = loadImageIOVideo("jumpingjacks2menlowres.ogg")
-    simulateBGBlob(I, IDims, 0.05)
+    simulateBGBlob(I, IDims, 40)
     saveVideo(I, IDims, "bg.avi")

@@ -171,28 +171,40 @@ def upsampleVideo(I, IDims, IDimsNew):
         INew.append(FNew.flatten())
     return np.array(INew)
 
-def sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew, NExamples = 20):
+def sharpenVideo(XOrig, IDims, XDown, IDimsDown, XDownNew, NExamples = -1, NPerBatch = 40):
     """
     Use image analogies to sharpen the consensus video
     """
-    #Randomly sample 10 analogy image pairs from original video
     As = []
     Aps = []
-    np.random.seed(NExamples)
-    for idx in np.random.permutation(XOrig.shape[0])[0:NExamples]:
+    idxs = np.arange(XOrig.shape[0])
+    if NExamples > 0:
+        #Randomly sample 10 analogy image pairs from original video
+        np.random.seed(NExamples)
+        idxs = np.random.permutation(XOrig.shape[0])[0:NExamples]
+    for idx in idxs:
         A = np.reshape(XDown[idx, :], IDimsDown)
         A = resizeImage(A, IDims)
         Ap = np.reshape(XOrig[idx, :], IDims)
         As.append(A)
         Aps.append(Ap)
     XFinal = []
-    for i in range(XDownNew.shape[0]):
-        print("Doing image analogies sharpening frame %i of %i"%(i, XDownNew.shape[0]))
-        B = np.reshape(XDownNew[i, :], IDimsDown)
-        B = resizeImage(B, IDims)
-        Bp = doImageAnalogiesAcausal(As, Aps, B, KSpatial = 5, outputIters = True)
-        writeImage(Bp, "%s%i.png"%(TEMP_STR, i+1))
-        XFinal.append(Bp.flatten())
+    NIters = int(np.ceil(XDownNew.shape[0]/float(NPerBatch)))
+    for it in range(NIters):
+        print("Doing image analogies sharpening batch %i of %i"%(it+1, NIters))
+        Bs = []
+        ivals = []
+        for i in range(it*NPerBatch, (it+1)*NPerBatch):
+            if i > XDownNew.shape[0]-1:
+                break
+            B = np.reshape(XDownNew[i, :], IDimsDown)
+            B = resizeImage(B, IDims)
+            Bs.append(B)
+            ivals.append(i)
+        Bps = doImageAnalogiesAcausal(As, Aps, Bs, KSpatial = 5, outputIters = False)
+        for i, Bp in enumerate(Bps):
+            writeImage(Bp, "%s%i.png"%(TEMP_STR, ivals[i]))
+            XFinal.append(Bp.flatten())
     return np.array(XFinal)
 
 def reorderVideo(XOrig, X_feat, IDims, derivWin = 10, Weighted = False, \
