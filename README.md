@@ -1,5 +1,14 @@
 # SloMoLoops
+### By [Christopher Tralie] and [Matthew Berger]
 
+<img src = "Results/Fan_MedianReordered_Close4.gif">
+
+
+<img src = "http://www.ctralie.com/Research/SloMoLoops/BlockDiagram.svg">
+
+## Abstract
+
+We consider the problem of taking a video that is comprised of multiple periods of repetitive motion, and reordering the frames of the video into a single period, producing a detailed, single cycle video of motion. This problem is challenging, as such videos often contain noise, drift due to camera motion and from cycle to cycle, and irrelevant background motion/occlusions, and these factors can confound the relevant periodic motion we seek in the video. To address these issues in a simple and efficient manner, we introduce a tracking free Eulerian approach for synthesizing a single cycle of motion. Our approach is geometric: we treat each frame as a point in high-dimensional Euclidean space, and analyze the sliding window embedding formed by this sequence of points, which yields samples along a topological loop regardless of the type of periodic motion.  We combine tools from topological data analysis and spectral geometric analysis to estimate the phase of each window, and we exploit the sliding window structure to robustly reorder frames.  We show quantitative results that highlight the robustness of our technique to camera shake, noise, and occlusions, and qualitative results of single-cycle motion synthesis across a variety of scenarios.
 
 ## Dependencies
 * Numpy/Scipy/Matplotlib
@@ -43,6 +52,10 @@ The above result is choppy, so let's do a median voting instead now
 ~~~~~ bash
 python VideoReordering.py --filename JumpingJacks_Occlusions.avi --is-median-reorder --is-weighted-laplacian
 ~~~~~
+
+The result is much smoother
+
+<img src = "Results/JumpingJacks_Occlusions-reordered-0-median-weighted-img-0.gif">
 
 [Christopher Tralie]: <http://www.ctralie.com>
 [Matthew Berger]: <https://matthewberger.github.io/>
