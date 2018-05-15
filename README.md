@@ -15,10 +15,10 @@ To see all of the options, run the script as follows
 python VideoReordering.py --help
 ~~~~~
 
-We will now go through a brief example toggling on and off some of the most common features.  First, we'll start with this video, which is the file <a href = "jumpingjacksbg.ogg">jumpingjacksbg.ogg</a>:
+We will now go through a brief example toggling on and off some of the most common features.  First, we'll start with this video, which is the file <a href = "http://www.ctralie.com/Research/SloMoLoops/jumpingjacksbg.ogg">jumpingjacksbg.ogg</a>:
 
 <video controls>
-  <source src='jumpingjacksbg.ogg' type="video/ogg">
+  <source src='http://www.ctralie.com/Research/SloMoLoops/jumpingjacksbg.ogg' type="video/ogg">
 Your browser does not support the video tag.
 </video>
 
