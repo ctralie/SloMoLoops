@@ -38,10 +38,10 @@
 % ----------------------------------------------------------
 \twoauthors
   {Christopher J. Tralie}
-	{Duke University,  Mathematics\\
+	{Duke University,  Dept. of Mathematics\\
 	ctralie@alumni.princeton.edu}
   {Matthew Berger}
-	{University of Arizona, Computer Science\\
+	{University of Arizona, Dept. of Computer Science\\
 	matthew.sh.berger@gmail.com}
 %
 \begin{document}
@@ -68,7 +68,7 @@ Periodicity, slow motion, sliding window embeddings, graph Laplacian, persistent
 
 Repetitive, periodic behavior is ubiquitous in our world. Animal locomotion, mechanical motion, biological rhythms, and musical rhythms can all be characterized as periodic phenomena.  In this work, we consider the problem of taking a video that contains such repetitive motion of many periods, and synthesizing a single fine detail, slow motion template cycle.  This fine detailed analysis can be applied, for example, to characterize subtle progressions of blood flow in the face during a heartbeat \cite{kumar2015distanceppg}.  Having access to a consensus template can also be used to visualize variations from cycle to cycle. This could be used to indicate the onset of failure in a repetitive automated action on an assembly line, to assess the stress of motions in repetitive human actions~\cite{greene2017visualizing}, and to optimize performance in athletic activities.
 
-Our approach to slow motion templates is {\em Eulerian}; that is, we process the video pixel by pixel with no tracking.  Eulerian approaches for video synthesis are attractive due to their simplicity and ease of implementation.  For instance, a Fourier bandpass filter can successfully elucidate subtle periodic motions in videos \cite{wu2012eulerian, wadhwa2013phase}.  Additionally, time-domain Eulerian approaches have been used to synthesize infinitely playing stochastic ``video textures''~\cite{schodl2000video}, as well as seamlessly looping video templates from a single cycle of periodic motion ~\cite{Liao2013VideoLoops,Liao2015VideoLoops} (this is not applicable to our problem since we fuse multiple cycles).  There are some pitfalls with Eulerian techniques, however.  They are known to fail for large motions, and also require the user to manually specify frequencies of interest \cite{wu2012eulerian, wadhwa2013phase}.  Furthermore, period-to-period drift due to a moving camera or small motion variations can be problematic, as can unrelated motion in the background or occlusions \cite{stauffer1999adaptive}.
+Our approach to slow motion templates is {\em Eulerian}; that is, we process the video pixel by pixel with no tracking.  Eulerian approaches for video synthesis are attractive due to their simplicity and ease of implementation.  For instance, a Fourier bandpass filter can successfully elucidate subtle periodic motions in videos \cite{wu2012eulerian, wadhwa2013phase}.  Time-domain Eulerian approaches can synthesize infinitely playing stochastic ``video textures''~\cite{schodl2000video}, as well as seamlessly loop video templates from a single cycle of periodic motion ~\cite{Liao2013VideoLoops,Liao2015VideoLoops}, though such approaches are not applicable to our problem since we fuse multiple cycles.  There are some pitfalls with Eulerian techniques, however.  They are known to fail for large motions, and also require the user to manually specify frequencies of interest \cite{wu2012eulerian, wadhwa2013phase}.  Furthermore, period-to-period drift due to a moving camera or small motion variations can be problematic, as can unrelated motion in the background or occlusions \cite{stauffer1999adaptive}.
 
 \begin{figure*}
 \centering
@@ -83,7 +83,7 @@ To address the problems with an Eulerian representation, we devise a geometric a
 
 
 % MSB: opportunity to slim paper by cutting examples 
-Many prior works use a combination of sliding window embeddings and TDA, for instance to detect chatter in mechanical systems \cite{khasawneh2016chatter} and quantify periodic activities in motion capture data \cite{vejdemo2015cohomological, venkataraman2016persistent}. However, our approach in using a sliding window jointly with TDA to {\em synthesize} a new result is novel. Related works use spectral geometry to rearrange unstructured collections of images around a loop as a pre-processing step for structure from motion \cite{averbuch2015ringit} or along a line to order the microscopic images of a developing embryo \cite{dsilva2015diffusionvecordering}. By constrast, we seek a cyclic order, and our input frames are ordered in time, enabling us to construct a sliding window.
+Many prior works use a combination of sliding window embeddings and TDA, for instance to detect chatter in mechanical systems \cite{khasawneh2016chatter} and quantify periodic activities in motion capture data \cite{vejdemo2015cohomological, venkataraman2016persistent}. However, our approach in using a sliding window jointly with TDA to {\em synthesize} a new result is novel. Related works use spectral geometry to rearrange unstructured collections of images around a loop as a pre-processing step for structure from motion \cite{averbuch2015ringit} or along a line to order the microscopic images of a developing embryo \cite{dsilva2015diffusionvecordering}. By constrast, we seek a cyclic reordering given input frames ordered in time, enabling us to construct a sliding window.
 
 %However, our use of the graph Laplacian to instead parameterize time series is unique. One can also view the combination of TDA and Laplacian eigenmaps as a simpler alternative to cohomology circular coordinates \cite{de2011persistent,vejdemo2015cohomological} for the special case of periodic data, and it is related to the approach in \cite{bendich2011improving}, which performs diffusion maps before TDA.
 
