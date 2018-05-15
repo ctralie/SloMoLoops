@@ -30,7 +30,7 @@ python VideoReordering.py --filename JumpingJacks_Occlusions.avi --is-simple-reo
 
 We get the following result
 
-<img src = "JumpingJacks_Occlusions-reordered-0-simple-weighted-img-0.gif">
+<img src = "http://www.ctralie.com/Research/SloMoLoops/JumpingJacks_Occlusions-reordered-0-simple-weighted-img-0.gif">
 
 
 The code also outputs the following plot, which gives more information about the TDA and the Laplacian circular coordinates
@@ -41,7 +41,7 @@ The code also outputs the following plot, which gives more information about the
 The above result is choppy, so let's do a median voting instead now
 
 ~~~~~ bash
-python VideoReordering.py --filename jumpingjacksbg.ogg --is-median-reorder --is-weighted-laplacian
+python VideoReordering.py --filename JumpingJacks_Occlusions.avi --is-median-reorder --is-weighted-laplacian
 ~~~~~
 
 [Christopher Tralie]: <http://www.ctralie.com>
