@@ -1,10 +1,11 @@
 # SloMoLoops
+## Turning periodic videos into slow motion videos with topological data analysis and graph theory
 ### By [Christopher Tralie] and [Matthew Berger]
 
-<img src = "Results/Fan_MedianReordered_Close4.gif">
-
-
 <img src = "http://www.ctralie.com/Research/SloMoLoops/BlockDiagram.svg">
+
+<img src = "Results/Fan_MedianReordered_Close4.gif" width = 300 height = 300>
+
 
 ## Abstract
 
@@ -53,7 +54,7 @@ The above result is choppy, so let's do a median voting instead now
 python VideoReordering.py --filename JumpingJacks_Occlusions.avi --is-median-reorder --is-weighted-laplacian
 ~~~~~
 
-The result is much smoother
+The result is much smoother, and most of the occlusions and unrelated background motions have been removed
 
 <img src = "Results/JumpingJacks_Occlusions-reordered-0-median-weighted-img-0.gif">
 
