@@ -2,6 +2,10 @@
 ## Turning periodic videos into slow motion videos with topological data analysis and graph theory
 ### By [Christopher Tralie] and [Matthew Berger]
 
+<h3><a href = "http://www.ctralie.com/Research/SloMoLoops/paper.pdf">Paper</a></h3>
+
+<h3><a href = "http://www.ctralie.com/Research/SloMoLoops">Supplementary videos</a></h3>
+
 <img src = "http://www.ctralie.com/Research/SloMoLoops/BlockDiagram.svg">
 
 <img src = "Results/Fan_MedianReordered_Close4.gif">
