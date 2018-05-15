@@ -1,12 +1,29 @@
 # SloMoLoops
 
 
-## Getting Started
-First install the dependencies [GUDHI], [pyTorch], [pyflann], and [imageio]
+## Dependencies
+* Numpy/Scipy/Matplotlib
+* [ripser python package] for persistent homology
+* [imageio] for efficient video I/O
+* [pyTorch] (Optional) For using resnet features instead of an image pyramid for mitigating motion drift
 
 
-[Chris Tralie]: <http://www.ctralie.com>
-[GUDHI]: <http://gudhi.gforge.inria.fr/python/latest/installation.html>
+## Running
+To see all of the options, run the script as follows
+
+~~~~~ bash
+python VideoReordering.py --help
+~~~~~
+
+We will now go through a brief example toggling on and off some of the most common features.  First, we'll start with this video, which is the file <a href = "jumpingjacksbg.ogg">jumpingjacksbg.ogg</a>:
+
+<video controls>
+  <source src='jumpingjacksbg.ogg' type="video/ogg">
+Your browser does not support the video tag.
+</video>
+
+[Christopher Tralie]: <http://www.ctralie.com>
+[Matthew Berger]: <https://matthewberger.github.io/>
+[ripser python package]: <https://github.com/ctralie/ripser>
 [pyTorch]: <http://pytorch.org/>
-[pyflann]: <https://anaconda.org/conda-forge/pyflann>
 [imageio]: <http://imageio.readthedocs.io/en/latest/installation.html>
