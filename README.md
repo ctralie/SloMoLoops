@@ -4,7 +4,7 @@
 
 <img src = "http://www.ctralie.com/Research/SloMoLoops/BlockDiagram.svg">
 
-<img src = "Results/Fan_MedianReordered_Close4.gif" width = 300 height = 300>
+<img src = "Results/Fan_MedianReordered_Close4.gif">
 
 
 ## Abstract
