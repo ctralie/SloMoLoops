@@ -35,7 +35,8 @@ We get the following result
 
 The code also outputs the following plot, which gives more information about the TDA and the Laplacian circular coordinates
 
-<img src = "http://www.ctralie.com/Research/SloMoLoops/JumpingJacks_Occlusions-reordered-0-simple-weighted-img-0_CircCoords.svg">
+![Jumping jacks simple reordered](http://www.ctralie.com/Research/SloMoLoops/JumpingJacks_Occlusions-reordered-0-simple-weighted-img-0_CircCoords.svg)
+
 
 The above result is choppy, so let's do a median voting instead now
 
