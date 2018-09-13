@@ -17,7 +17,7 @@ from PIL import Image
 
 #Need these for saving 3D video
 
-AVCONV_BIN = 'avconv'
+AVCONV_BIN = 'ffmpeg'
 TEMP_STR = "pymeshtempprefix"
 
 #############################################################
